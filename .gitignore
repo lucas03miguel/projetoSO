@@ -1,3 +1,1 @@
-src/5g_auth_platform
-src/backoffice_user
-src/mobile_user
+#src/bin/*

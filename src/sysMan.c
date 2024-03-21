@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define BUFLEN 1024
 int N_USERS, N_SLOTS, AUTH_SERVERS_MAX, AUTH_PROC_TIME, MAX_VIDEO_WAIT, MAX_OTHERS_WAIT;
@@ -94,8 +95,10 @@ int main(int argc, char const *argv[]){
     if (argc != 2)
         printf("Numero de parametros errados\n./5g_auth_platform {config-file}\n");
 
-
-
+    char filename[BUFLEN] = "../files/";
+    strcat(filename, argv[1]);
+    arranque(filename);
+    
 
     return 0;
 }

@@ -20,6 +20,7 @@ int main(int argc, char *argv[]){
 
     arranque(argv[1]);
     
+    while (1);
 
     return 0;
 }
@@ -34,7 +35,7 @@ void arranque(char *argv){
     logFile = fopen("../files/log.txt", "w");
     if (logFile == NULL){
         printf("Erro ao abrir o ficheiro log\n");
-        sprintf(message, "Erro ao abrir o ficheiro log");
+        sprintf(message, "ERROR ao abrir o ficheiro log");
         escreverLog(logFile, message);
         exit(-1);
     }
@@ -43,7 +44,7 @@ void arranque(char *argv){
     f = fopen(filename, "r");
     if (f == NULL) {
         printf("Erro ao abrir o ficheiro %s.\n", argv);
-        sprintf(message, "Erro ao abrir o ficheiro %s", argv);
+        sprintf(message, "ERROR ao abrir o ficheiro %s", argv);
         escreverLog(logFile, message);
         //sigint(0);
         exit(-1);
@@ -52,7 +53,7 @@ void arranque(char *argv){
     int size = ftell(f);
     if(size == 0){
         printf("Erro: o %s ficheiro está vazio.\n", argv);
-        sprintf(message, "Erro: o ficheiro %s está vazio", argv);
+        sprintf(message, "ERROR: o ficheiro %s está vazio", argv);
         escreverLog(logFile, message);
         //sigint(0);
         exit(-1);
@@ -66,7 +67,7 @@ void arranque(char *argv){
     N_USERS = atoi(linhas[0]);
     if (N_USERS < 1){
         printf("Erro: o número de utilizadores tem de ser maior que 0.\n");
-        sprintf(message, "Erro: o número de utilizadores tem de ser maior que 0");
+        sprintf(message, "ERROR: o número de utilizadores tem de ser maior que 0");
         escreverLog(logFile, argv);
         exit(-1);
     }
@@ -81,7 +82,7 @@ void arranque(char *argv){
     }
     if (N_SLOTS < 0 || invalido){
         printf("Erro: o número de slots nas filas tem de ser maior ou igual que 0.\n");
-        sprintf(message, "Erro: o número de slots tem de ser maior que 0");
+        sprintf(message, "ERROR: o número de slots tem de ser maior que 0");
         escreverLog(logFile, message);
         exit(-1);
     }
@@ -90,7 +91,7 @@ void arranque(char *argv){
     AUTH_SERVERS_MAX = atoi(linhas[2]);
     if (AUTH_SERVERS_MAX < 1){
         printf("Erro: o número de servidores de autorização tem de ser maior que 0.\n");
-        sprintf(message, "Erro: o número de servidores de autorização tem de ser maior que 0");
+        sprintf(message, "ERROR: o número de servidores de autorização tem de ser maior que 0");
         escreverLog(logFile, message);
         exit(-1);
     }
@@ -99,7 +100,7 @@ void arranque(char *argv){
     AUTH_PROC_TIME = atoi(linhas[3]);
     if (AUTH_PROC_TIME < 1){
         printf("Erro: o tempo de processamento dos servidores de autorização tem de ser maior que 0.\n");
-        sprintf(message, "Erro: o tempo de processamento dos servidores de autorização tem de ser maior que 0");
+        sprintf(message, "ERROR: o tempo de processamento dos servidores de autorização tem de ser maior que 0");
         escreverLog(logFile, message);
         exit(-1);
     }
@@ -108,7 +109,7 @@ void arranque(char *argv){
     MAX_VIDEO_WAIT = atoi(linhas[4]);
     if (MAX_VIDEO_WAIT < 1){
         printf("Erro: o número de servidores de autorização tem de ser maior que 0.\n");
-        sprintf(message, "Erro: o número de servidores de autorização tem de ser maior que 0");
+        sprintf(message, "ERROR: o número de servidores de autorização tem de ser maior que 0");
         escreverLog(logFile, message);
         exit(-1);
     }
@@ -117,7 +118,7 @@ void arranque(char *argv){
     MAX_OTHERS_WAIT = atoi(linhas[5]);
     if (MAX_OTHERS_WAIT < 1){
         printf("Erro: o número de servidores de autorização tem de ser maior que 0.\n");
-        sprintf(message, "Erro: o número de servidores de autorização tem de ser maior que 0");
+        sprintf(message, "ERROR: o número de servidores de autorização tem de ser maior que 0");
         escreverLog(logFile, message);
         exit(-1);
     }

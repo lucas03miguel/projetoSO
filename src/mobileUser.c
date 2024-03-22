@@ -11,19 +11,18 @@ int PLAFOND, N_PEDIDOS, INTERVALO_VIDEO, INTERVALO_MUSIC, INTERVALO_SOCIAL, DADO
 FILE *logFile;
 
 void detecaoErros(int n, char *args[]);
-void escreverLog(FILE *f, char *message);
+void escreverLog(char *message);
+void mobile();
 
 
 int main(int argc, char *argv[]){
     detecaoErros(argc, argv);
-    
-    while (1)
-    {
-        printf("PLAFOND: %d\nN_PEDIDOS: %d\nINTERVALO_VIDEO: %d\nINTERVALO_MUSIC: %d\nINTERVALO_SOCIAL: %d\nDADOS_RESERVAR: %d\n\n", PLAFOND, N_PEDIDOS, INTERVALO_VIDEO, INTERVALO_MUSIC, INTERVALO_SOCIAL, DADOS_RESERVAR);
-        sleep(2);
-    }
-    
 
+    if (fork() == 0) {
+        escreverLog("MOBILE_USER SIMULATOR STARTING");
+        mobile();
+        exit(0);
+    }
 
     return 0;
 }
@@ -52,7 +51,7 @@ void detecaoErros(int n, char *args[]) {
                 else {
                     printf("Erro: o argumento {plafond inicial} não é válido.\n");
                     sprintf(message, "ERROR: o argumento {plafond inicial} não é válido.");
-                    escreverLog(logFile, message);
+                    escreverLog(message);
                 }
                 break;
             case 2:
@@ -60,7 +59,7 @@ void detecaoErros(int n, char *args[]) {
                 else {
                     printf("Erro: o argumento {número de pedidos de autorização} não é válido.\n");
                     sprintf(message, "ERROR: o argumento {número de pedidos de autorização} não é válido.");
-                    escreverLog(logFile, message);
+                    escreverLog(message);
                 }
                 break;
             case 3:
@@ -68,7 +67,7 @@ void detecaoErros(int n, char *args[]) {
                 else {
                     printf("Erro: o argumento {intervalo VIDEO} não é válido.\n");
                     sprintf(message, "ERROR: o argumento {intervalo VIDEO} não é válido.");
-                    escreverLog(logFile, message);
+                    escreverLog(message);
                 }
                 break;
             case 4:
@@ -76,7 +75,7 @@ void detecaoErros(int n, char *args[]) {
                 else {
                     printf("Erro: o argumento {intervalo MUSIC} não é válido.\n"); 
                     sprintf(message, "ERROR: o argumento {intervalo MUSIC} não é válido.");
-                    escreverLog(logFile, message);
+                    escreverLog(message);
                 }
                 break;
             case 5:
@@ -84,7 +83,7 @@ void detecaoErros(int n, char *args[]) {
                 else {
                     printf("Erro: o argumento {intervalo SOCIAL} não é válido.\n");
                     sprintf(message, "ERROR: o argumento {intervalo SOCIAL} não é válido.");
-                    escreverLog(logFile, message);
+                    escreverLog(message);
                 }
                 break;
             case 6:
@@ -92,7 +91,7 @@ void detecaoErros(int n, char *args[]) {
                 else {
                     printf("Erro: o argumento {dados a reservar} não é válido.\n");
                     sprintf(message, "ERROR: o argumento {dados a reservar} não é válido.");
-                    escreverLog(logFile, message);
+                    escreverLog(message);
                 }
                 break;
             default:
@@ -100,20 +99,31 @@ void detecaoErros(int n, char *args[]) {
         }
         if (letras) {
             printf("./mobile_user {plafond inicial} {número de pedidos de autorização} {intervalo VIDEO} {intervalo MUSIC} {intervalo SOCIAL} {dados a reservar}\n");
+            fclose(logFile);
             exit(-1);
         }
     }
 }
 
 
-void escreverLog(FILE *f, char *message){
+void escreverLog(char *message){
     time_t currentTime;
     struct tm *localTime;
 
     time(&currentTime);
     localTime = localtime(&currentTime);
-    fprintf(f, "%02d:%02d:%02d %s\n", localTime->tm_hour, localTime->tm_min, localTime->tm_sec, message);
+    fprintf(logFile, "%02d:%02d:%02d %s\n", localTime->tm_hour, localTime->tm_min, localTime->tm_sec, message);
     
     fflush(stdout);
-    fflush(f);
+    fflush(logFile);
+}
+
+void mobile() {
+    //TODO: Implementar
+
+    while (1) {
+        printf("PLAFOND: %d\nN_PEDIDOS: %d\nINTERVALO_VIDEO: %d\nINTERVALO_MUSIC: %d\nINTERVALO_SOCIAL: %d\nDADOS_RESERVAR: %d\n\n", PLAFOND, N_PEDIDOS, INTERVALO_VIDEO, INTERVALO_MUSIC, INTERVALO_SOCIAL, DADOS_RESERVAR);
+        sleep(2);
+    }
+    
 }

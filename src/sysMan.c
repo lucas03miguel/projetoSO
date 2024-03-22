@@ -59,6 +59,7 @@ void arranque(char *argv){
     }
     fseek(f, 0, SEEK_SET);
 
+    
     char linhas[6][BUFLEN];
 
     fgets(linhas[0], BUFLEN, f);

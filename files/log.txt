@@ -1,2 +1,1 @@
-00:05:48 5G_AUTH_PLATFORM SIMULATOR STARTING
-00:05:48 Erro: o número de servidores de autorização tem de ser maior que 0
+12:17:23 5G_AUTH_PLATFORM SIMULATOR STARTING

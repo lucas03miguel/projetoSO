@@ -4,16 +4,12 @@
 #include <ctype.h>
 #include <time.h>
 #include <unistd.h>
+#include "sysMan.h"
 
 #define BUFLEN 1024
+
 int N_USERS, N_SLOTS, AUTH_SERVERS_MAX, AUTH_PROC_TIME, MAX_VIDEO_WAIT, MAX_OTHERS_WAIT;
 FILE *logFile;
-
-void arranque(char *filename);
-void escreverLog(char *message);
-void authorizationRequestManager();
-void monitorEngine();
-
 
 int main(int argc, char *argv[]){
     if (argc != 2) {
@@ -23,7 +19,10 @@ int main(int argc, char *argv[]){
 
     arranque(argv[1]);
     
-    while (1);
+    while (1) {
+        printf("N_USERS: %d\nN_SLOTS: %d\nAUTH_SERVERS_MAX: %d\nAUTH_PROC_TIME: %d\nMAX_VIDEO_WAIT: %d\nMAX_OTHERS_WAIT: %d\n\n", N_USERS, N_SLOTS, AUTH_SERVERS_MAX, AUTH_PROC_TIME, MAX_VIDEO_WAIT, MAX_OTHERS_WAIT);
+        sleep(2);
+    }
 
     return 0;
 }

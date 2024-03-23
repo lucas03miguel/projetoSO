@@ -3,16 +3,12 @@
 #include <ctype.h>
 #include <time.h>
 #include <unistd.h>
+#include "mobileUser.h"
 
 #define BUFLEN 1024
-//#include <string.h>
 
 int PLAFOND, N_PEDIDOS, INTERVALO_VIDEO, INTERVALO_MUSIC, INTERVALO_SOCIAL, DADOS_RESERVAR;
 FILE *logFile;
-
-void detecaoErros(int n, char *args[]);
-void escreverLog(char *message);
-void mobile();
 
 
 int main(int argc, char *argv[]){

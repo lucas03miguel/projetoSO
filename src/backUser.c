@@ -3,15 +3,12 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include "backUser.h"
 
 #define BUFLEN 1024
 
 FILE *logFile;
 
-void escreverLog(char *message);
-void printMenu();
-void gerarComandos(char *comando);
-void backoffice();
 
 int main(int argc, char const *argv[]){
     if (argc != 1) {

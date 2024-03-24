@@ -1,3 +1,6 @@
+//Lucas Miguel Simões Loberto 2021219107
+//Simão Tadeu Ricacho Reis Moreira 2020218319
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -40,7 +40,7 @@ void detecaoErros(int n, char *args[]) {
                 break;
             }
         }
-
+        
         switch (i) {
             case 1:
                 if (!letras) PLAFOND = atoi(args[i]);

@@ -4,11 +4,17 @@
 #include <ctype.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <pthread.h>
 #include "sysMan.h"
 
 #define BUFLEN 1024
 
 int N_USERS, N_SLOTS, AUTH_SERVERS_MAX, AUTH_PROC_TIME, MAX_VIDEO_WAIT, MAX_OTHERS_WAIT;
+int shmid;
+MemStruct *shrmem;
+pthread_t receiver_t, sender_t;
 FILE *logFile;
 
 int main(int argc, char *argv[]){
@@ -51,16 +57,18 @@ void arranque(char *argv){
         sprintf(message, "ERROR ao abrir o ficheiro %s", argv);
         escreverLog(message);
         //sigint(0);
+        fclose(f);
         fclose(logFile);
         exit(-1);
     }
     fseek(f, 0, SEEK_END);
-    int size = ftell(f);
-    if(size == 0){
+    int fileSize = ftell(f);
+    if(fileSize == 0){
         printf("Erro: o %s ficheiro está vazio.\n", argv);
         sprintf(message, "ERROR: o ficheiro %s está vazio", argv);
         escreverLog(message);
         //sigint(0);
+        fclose(f);
         fclose(logFile);
         exit(-1);
     }
@@ -92,8 +100,7 @@ void arranque(char *argv){
         printf("Erro: o número de slots nas filas tem de ser maior ou igual que 0.\n");
         sprintf(message, "ERROR: o número de slots tem de ser maior que 0");
         escreverLog(message);
-        fclose(f);
-        fclose(logFile);
+        limpeza(f);
         exit(-1);
     }
 
@@ -103,8 +110,7 @@ void arranque(char *argv){
         printf("Erro: o número de servidores de autorização tem de ser maior que 0.\n");
         sprintf(message, "ERROR: o número de servidores de autorização tem de ser maior que 0");
         escreverLog(message);
-        fclose(f);
-        fclose(logFile);
+        limpeza(f);
         exit(-1);
     }
     
@@ -114,8 +120,7 @@ void arranque(char *argv){
         printf("Erro: o tempo de processamento dos servidores de autorização tem de ser maior que 0.\n");
         sprintf(message, "ERROR: o tempo de processamento dos servidores de autorização tem de ser maior que 0");
         escreverLog(message);
-        fclose(f);
-        fclose(logFile);
+        limpeza(f);
         exit(-1);
     }
     
@@ -125,8 +130,7 @@ void arranque(char *argv){
         printf("Erro: o número de servidores de autorização tem de ser maior que 0.\n");
         sprintf(message, "ERROR: o número de servidores de autorização tem de ser maior que 0");
         escreverLog(message);
-        fclose(f);
-        fclose(logFile);
+        limpeza(f);
         exit(-1);
     }
 
@@ -136,8 +140,7 @@ void arranque(char *argv){
         printf("Erro: o número de servidores de autorização tem de ser maior que 0.\n");
         sprintf(message, "ERROR: o número de servidores de autorização tem de ser maior que 0");
         escreverLog(message);
-        fclose(f);
-        fclose(logFile);
+        limpeza(f);
         exit(-1);
     }
 
@@ -152,11 +155,42 @@ void arranque(char *argv){
         exit(0);
     }
     
+    int size = N_USERS * sizeof(MobileUser) + sizeof(Stats) + sizeof(MemStruct); 
+    shmid = shmget(IPC_PRIVATE, size, IPC_CREAT|0777);
+    if (shmid == -1) {
+        printf("Erro ao criar a memória partilhada.\n");
+        sprintf(message, "ERROR: não foi possível criar a memória partilhada");
+        escreverLog(message);
+        //sigint(0);
+        limpeza(f);
+        exit(-1);
+    }
+
+    shrmem = (MemStruct *) shmat(shmid, NULL, 0);
+    if (shrmem == (MemStruct *) -1) {
+        printf("Erro ao aceder à memória partilhada.\n");
+        sprintf(message, "ERROR: não foi possível aceder à memória partilhada");
+        escreverLog(message);
+        //sigint(0);
+        limpeza(f);
+        exit(-1);
+    }
+
+    shrmem->mobileUsers = (MobileUser *)((void *)shrmem + sizeof(MobileUser));
+    shrmem->stats = (Stats *)((void *)shrmem + N_USERS * sizeof(MobileUser) + sizeof(MemStruct));
 
 
+    
 
+    for(int i = 0; i < 2 + 1; ++i)
+    	wait(NULL);
+    fclose(f);
+}
 
-
+void limpeza(FILE *f){
+    shmdt(shrmem);
+    shmctl(shmid, IPC_RMID, NULL);
+    fclose(logFile);
     fclose(f);
 }
 
@@ -173,9 +207,41 @@ void escreverLog(char *message){
 }
 
 void authorizationRequestManager() {
+    if(pthread_create(&receiver_t, NULL, receiver, NULL) == -1){
+    	printf("Erro ao criar a thread Receiver\n");
+  		escreverLog("ERROR: não foi possível criar a thread Receiver\n");
+  		//sigint(0);
+        //limpeza(f);
+    	exit(-1);
+    }
+    printf("Thread sensor reader criada\n");
+    escreverLog("Thread sensor reader criada");
+    
+    if(pthread_create(&sender_t, NULL, sender, NULL) == -1){
+    	printf("Erro ao criar a thread Sender\n");
+  		escrever_log("ERROR: não foi possível criar a thread Sender\n");
+  		//sigint(0);
+    	exit(-1);
+    }
+    printf("Thread console reader criada\n");
+    escreverLog("Thread console reader criada");
+
+
     //TODO: completar
+
+
+    pthread_join(receiver_t, NULL);
+    pthread_join(sender_t, NULL);
 }
 
 void monitorEngine() {
+    //TODO: completar
+}
+
+void * receiver(void *arg) {
+    //TODO: completar
+}
+
+void * sender(void *arg) {
     //TODO: completar
 }

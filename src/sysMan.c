@@ -52,8 +52,6 @@ void arranque(char *argv){
     logFile = fopen("../files/log.txt", "w");
     if (logFile == NULL){
         printf("Erro ao abrir o ficheiro log\n");
-        escreverLog("ERROR ao abrir o ficheiro log");
-        fclose(logFile);
         exit(-1);
     }
     escreverLog("5G_AUTH_PLATFORM SIMULATOR STARTING");
@@ -63,7 +61,6 @@ void arranque(char *argv){
         printf("Erro ao abrir o ficheiro %s.\n", argv);
         sprintf(message, "ERROR ao abrir o ficheiro %s", argv);
         escreverLog(message);
-        fclose(f);
         fclose(logFile);
         exit(-1);
     }

@@ -1,9 +1,8 @@
 #ifndef MOBILEUSER_H
 #define MOBILEUSER_H
 
-void arranque(char *filename);
+void mobile();
 void escreverLog(char *message);
-void authorizationRequestManager();
-void monitorEngine();
+void detecaoErros(int n, char *args[]);
 
 #endif // MOBILEUSER_H

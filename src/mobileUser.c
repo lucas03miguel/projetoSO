@@ -6,7 +6,9 @@
 #include <ctype.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/wait.h>
 #include "mobileUser.h"
+
 
 #define BUFLEN 1024
 
@@ -23,6 +25,7 @@ int main(int argc, char *argv[]){
         exit(0);
     }
 
+    wait(NULL);
     return 0;
 }
 

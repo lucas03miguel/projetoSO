@@ -1,6 +1,25 @@
 #ifndef SYSMAN_H
 #define SYSMAN_H
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <time.h>
+#include <unistd.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <errno.h>
+#include <sys/wait.h>
+#include <sys/select.h>
+#include <signal.h>
+
 typedef struct {
     int plafondInicial;
     int plafondAtual;
@@ -25,7 +44,8 @@ typedef struct {
 } MemStruct;
 
 void arranque(char *filename);
-void limpeza(FILE *f);
+void sigint(int signum);
+void limpeza();
 void escreverLog(char *message);
 void authorizationRequestManager();
 void monitorEngine();

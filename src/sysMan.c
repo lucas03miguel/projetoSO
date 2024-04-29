@@ -1,36 +1,26 @@
 //Lucas Miguel Simões Loberto 2021219107
 //Simão Tadeu Ricacho Reis Moreira 2020218319
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-#include <time.h>
-#include <unistd.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <pthread.h>
-#include <semaphore.h>
-#include <sys/wait.h>
-#include <fcntl.h>
 #include "sysMan.h"
 
 #define BUFLEN 1024
+#define PIPE "../files/pipe"
 
 int N_USERS, N_SLOTS, AUTH_SERVERS_MAX, AUTH_PROC_TIME, MAX_VIDEO_WAIT, MAX_OTHERS_WAIT;
-int shmid;
+int shmid, fd_pipe;
 MemStruct *shrmem;
 pthread_t receiver_t, sender_t;
 pthread_mutex_t mutex;
 pthread_cond_t cond;
 sem_t *sem_monitor, *sem_auth_engine, *sem_auth_request, *sem_sys_manager;
-FILE *logFile;
+FILE *logFile, *f;
+
 
 int main(int argc, char *argv[]){
     if (argc != 2) {
         printf("Numero de parametros errado\n./5g_auth_platform {config-file}\n");
         exit(-1);
     }
+    signal(SIGINT, sigint);
 
     arranque(argv[1]);
     
@@ -43,7 +33,6 @@ int main(int argc, char *argv[]){
 }
 
 void arranque(char *argv){
-    FILE *f;
     int invalido = 0;
     char message[BUFLEN];
     char filename[BUFLEN] = "../files/";
@@ -51,14 +40,16 @@ void arranque(char *argv){
 
     logFile = fopen("../files/log.txt", "w");
     if (logFile == NULL){
-        printf("Erro ao abrir o ficheiro log\n");
+        perror("Erro ao abrir o ficheiro log");
+        limpeza();
         exit(-1);
     }
     escreverLog("5G_AUTH_PLATFORM SIMULATOR STARTING");
 
     f = fopen(filename, "r");
     if (f == NULL) {
-        printf("Erro ao abrir o ficheiro %s.\n", argv);
+        sprintf(message, "Erro ao abrir o ficheiro %s", argv);
+        perror(message);
         sprintf(message, "ERROR ao abrir o ficheiro %s", argv);
         escreverLog(message);
         fclose(logFile);
@@ -71,8 +62,7 @@ void arranque(char *argv){
         printf("Erro: o %s ficheiro está vazio.\n", argv);
         sprintf(message, "ERROR: o ficheiro %s está vazio", argv);
         escreverLog(message);
-        fclose(f);
-        fclose(logFile);
+        limpeza();
         exit(-1);
     }
     fseek(f, 0, SEEK_SET);
@@ -94,7 +84,7 @@ void arranque(char *argv){
     if (N_USERS < 1){
         printf("Erro: o número de utilizadores tem de ser maior que 0 e inteiro.\n");
         escreverLog("ERROR: número de utilizadores inválido");
-        limpeza(f);
+        limpeza();
         exit(-1);
     }
 
@@ -102,7 +92,7 @@ void arranque(char *argv){
     if (N_SLOTS < 0){
         printf("Erro: o número de slots nas filas tem de ser maior ou igual que 0 e inteiro.\n");
         escreverLog("ERROR: número de slots inválido");
-        limpeza(f);
+        limpeza();
         exit(-1);
     }
 
@@ -110,7 +100,7 @@ void arranque(char *argv){
     if (AUTH_SERVERS_MAX < 1){
         printf("Erro: o número de Authorization Engines tem de ser maior ou igual que 1 e inteiro.\n");
         escreverLog("ERROR: número de Authorization Engines inválido");
-        limpeza(f);
+        limpeza();
         exit(-1);
     }
     
@@ -118,7 +108,7 @@ void arranque(char *argv){
     if (AUTH_PROC_TIME < 0){
         printf("Erro: o tempo de processamento dos Authorization Engine é inválido e inteiro.\n");
         escreverLog("ERROR: tempo de processamento dos Authorization Engine inválido");
-        limpeza(f);
+        limpeza();
         exit(-1);
     }
     
@@ -126,7 +116,7 @@ void arranque(char *argv){
     if (MAX_VIDEO_WAIT < 1){
         printf("Erro: o tempo que os pedidos de autorização do serviço de vídeo podem aguardar tem de ser maior ou igual que 1 e inteiro.\n");
         escreverLog("ERROR: tempo que os pedidos de autorização do serviço de vídeo podem aguardar inválido");
-        limpeza(f);
+        limpeza();
         exit(-1);
     }
 
@@ -134,7 +124,7 @@ void arranque(char *argv){
     if (MAX_OTHERS_WAIT < 1){
         printf("Erro: o tempo que os outros pedidos de autorização podem aguardar tem de ser maior ou igual que 1 e inteiro.\n");
         escreverLog("ERROR: tempo que os outros pedidos de autorização podem aguardar inválido");
-        limpeza(f);
+        limpeza();
         exit(-1);
     }
 
@@ -152,17 +142,17 @@ void arranque(char *argv){
     int size = N_USERS * sizeof(MobileUser) + sizeof(Stats) + sizeof(MemStruct); 
     shmid = shmget(IPC_PRIVATE, size, IPC_CREAT|0777);
     if (shmid == -1) {
-        printf("Erro ao criar a memória partilhada.\n");
+        perror("Erro ao criar a memória partilhada");
         escreverLog("ERROR: não foi possível criar a memória partilhada");
-        limpeza(f);
+        limpeza();
         exit(-1);
     }
 
     shrmem = (MemStruct *) shmat(shmid, NULL, 0);
     if (shrmem == (MemStruct *) -1) {
-        printf("Erro ao aceder à memória partilhada.\n");
+        perror("Erro ao aceder à memória partilhada");
         escreverLog("ERROR: não foi possível aceder à memória partilhada");
-        limpeza(f);
+        limpeza();
         exit(-1);
     }
 
@@ -178,18 +168,38 @@ void arranque(char *argv){
         exit(-1);
     }
     */
+   if (mkfifo(PIPE, O_CREAT | O_EXCL | 0600) == -1) {
+        perror("Erro ao criar o pipe");
+        escreverLog("ERROR: não foi possível criar o pipe");
+        limpeza();
+        exit(-1);
+    }
     
 
     for(int i = 0; i < 2 + 1; ++i)
     	wait(NULL);
-    fclose(f);
+    //fclose(f);
 }
 
-void limpeza(FILE *f){
+void sigint(int signum){
+    printf(" recebido\nA terminar o programa\n");
+    escreverLog("SIGNAL SIGINT RECEIVED. TERMINATING PROGRAM");
+
+    limpeza();
+    exit(0);
+}
+
+void limpeza(){
+    printf("\nA realizar limpeza\n");
+
+    close(fd_pipe);
+    unlink(PIPE);
     shmdt(shrmem);
     shmctl(shmid, IPC_RMID, NULL);
     fclose(logFile);
     fclose(f);
+
+    printf("Limpeza realizada. Saindo...\n");
 }
 
 void escreverLog(char *message){
@@ -206,7 +216,7 @@ void escreverLog(char *message){
 
 void authorizationRequestManager() {
     if(pthread_create(&receiver_t, NULL, receiver, NULL) == -1){
-    	printf("Erro ao criar a thread Receiver\n");
+    	perror("Erro ao criar a thread Receiver");
   		escreverLog("ERROR: não foi possível criar a thread Receiver");
  
     	exit(-1);
@@ -215,7 +225,7 @@ void authorizationRequestManager() {
     escreverLog("THREAD RECEIVER CREATED");
     
     if(pthread_create(&sender_t, NULL, sender, NULL) == -1){
-    	printf("Erro ao criar a thread Sender\n");
+    	perror("Erro ao criar a thread Sender\n");
   		escreverLog("ERROR: não foi possível criar a thread Sender");
  
     	exit(-1);

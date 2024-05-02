@@ -1,30 +1,20 @@
 //Lucas Miguel Simões Loberto 2021219107
 //Simão Tadeu Ricacho Reis Moreira 2020218319
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <time.h>
-#include <unistd.h>
-#include <sys/wait.h>
 #include "mobileUser.h"
 
-
-#define BUFLEN 1024
-
-int PLAFOND, N_PEDIDOS, INTERVALO_VIDEO, INTERVALO_MUSIC, INTERVALO_SOCIAL, DADOS_RESERVAR;
-FILE *logFile;
+//FILE *logFile;
 
 
 int main(int argc, char *argv[]){
     detecaoErros(argc, argv);
 
     if (fork() == 0) {
-        escreverLog("MOBILE_USER SIMULATOR STARTING");
+        //escreverLog("MOBILE_USER SIMULATOR STARTING");
         mobile();
         exit(0);
     }
-
+    
     wait(NULL);
     return 0;
 }
@@ -36,8 +26,8 @@ void detecaoErros(int n, char *args[]) {
         exit(-1);
     }
 
-    logFile = fopen("../files/log.txt", "a");
-    char message[BUFLEN];
+    //logFile = fopen("../files/log.txt", "a");
+    //char message[BUFLEN];
     int letras = 0;
     for (int i = 1; i < n; i++) {
         for (int j = 0; args[i][j] != '\0'; j++) {
@@ -52,48 +42,48 @@ void detecaoErros(int n, char *args[]) {
                 if (!letras) PLAFOND = atoi(args[i]);
                 else {
                     printf("Erro: o argumento {plafond inicial} não é válido.\n");
-                    sprintf(message, "ERROR: o argumento {plafond inicial} não é válido.");
-                    escreverLog(message);
+                    //sprintf(message, "ERROR: o argumento {plafond inicial} não é válido.");
+                    //escreverLog(message);
                 }
                 break;
             case 2:
                 if (!letras) N_PEDIDOS = atoi(args[i]);
                 else {
                     printf("Erro: o argumento {número de pedidos de autorização} não é válido.\n");
-                    sprintf(message, "ERROR: o argumento {número de pedidos de autorização} não é válido.");
-                    escreverLog(message);
+                    //sprintf(message, "ERROR: o argumento {número de pedidos de autorização} não é válido.");
+                    //escreverLog(message);
                 }
                 break;
             case 3:
                 if (!letras) INTERVALO_VIDEO = atoi(args[i]);
                 else {
                     printf("Erro: o argumento {intervalo VIDEO} não é válido.\n");
-                    sprintf(message, "ERROR: o argumento {intervalo VIDEO} não é válido.");
-                    escreverLog(message);
+                    //sprintf(message, "ERROR: o argumento {intervalo VIDEO} não é válido.");
+                    //escreverLog(message);
                 }
                 break;
             case 4:
                 if (!letras) INTERVALO_MUSIC = atoi(args[i]);
                 else {
                     printf("Erro: o argumento {intervalo MUSIC} não é válido.\n"); 
-                    sprintf(message, "ERROR: o argumento {intervalo MUSIC} não é válido.");
-                    escreverLog(message);
+                    //sprintf(message, "ERROR: o argumento {intervalo MUSIC} não é válido.");
+                    //escreverLog(message);
                 }
                 break;
             case 5:
                 if (!letras) INTERVALO_SOCIAL = atoi(args[i]);
                 else {
                     printf("Erro: o argumento {intervalo SOCIAL} não é válido.\n");
-                    sprintf(message, "ERROR: o argumento {intervalo SOCIAL} não é válido.");
-                    escreverLog(message);
+                    //sprintf(message, "ERROR: o argumento {intervalo SOCIAL} não é válido.");
+                    //escreverLog(message);
                 }
                 break;
             case 6:
                 if (!letras) DADOS_RESERVAR = atoi(args[i]);
                 else {
                     printf("Erro: o argumento {dados a reservar} não é válido.\n");
-                    sprintf(message, "ERROR: o argumento {dados a reservar} não é válido.");
-                    escreverLog(message);
+                    //sprintf(message, "ERROR: o argumento {dados a reservar} não é válido.");
+                    //escreverLog(message);
                 }
                 break;
             default:
@@ -101,13 +91,13 @@ void detecaoErros(int n, char *args[]) {
         }
         if (letras) {
             printf("./mobile_user {plafond inicial} {número de pedidos de autorização} {intervalo VIDEO} {intervalo MUSIC} {intervalo SOCIAL} {dados a reservar}\n");
-            fclose(logFile);
+            //fclose(logFile);
             exit(-1);
         }
     }
 }
 
-
+/*
 void escreverLog(char *message){
     time_t currentTime;
     struct tm *localTime;
@@ -119,6 +109,7 @@ void escreverLog(char *message){
     fflush(stdout);
     fflush(logFile);
 }
+*/
 
 void mobile() {
     //TODO: Implementar

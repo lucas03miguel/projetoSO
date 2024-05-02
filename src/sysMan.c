@@ -9,7 +9,7 @@ int N_USERS, N_SLOTS, AUTH_SERVERS_MAX, AUTH_PROC_TIME, MAX_VIDEO_WAIT, MAX_OTHE
 int shmid, fd_pipe;
 MemStruct *shrmem;
 pthread_t receiver_t, sender_t;
-pthread_mutex_t mutex;
+pthread_mutex_t mutex_mem = PTHREAD_MUTEX_INITIALIZER, mutex_video_queue = PTHREAD_MUTEX_INITIALIZER, mutex_others_queue = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond;
 sem_t *sem_monitor, *sem_auth_engine, *sem_auth_request, *sem_sys_manager;
 FILE *logFile, *f;
@@ -128,17 +128,6 @@ void arranque(char *argv){
         exit(-1);
     }
 
-    if (fork() == 0) {
-        escreverLog("PROCESS AUTHORIZATION_REQUEST_MANAGER CREATED");
-        authorizationRequestManager();
-        exit(0);
-    }
-    if (fork() == 0) {
-        escreverLog("PROCESS MONITOR_ENGINE CREATED");
-        monitorEngine();
-        exit(0);
-    }
-    
     int size = N_USERS * sizeof(MobileUser) + sizeof(Stats) + sizeof(MemStruct); 
     shmid = shmget(IPC_PRIVATE, size, IPC_CREAT|0777);
     if (shmid == -1) {
@@ -159,6 +148,17 @@ void arranque(char *argv){
     shrmem->mobileUsers = (MobileUser *)((void *)shrmem + sizeof(MobileUser));
     shrmem->stats = (Stats *)((void *)shrmem + N_USERS * sizeof(MobileUser) + sizeof(MemStruct));
 
+    if (fork() == 0) {
+        escreverLog("PROCESS AUTHORIZATION_REQUEST_MANAGER CREATED");
+        authorizationRequestManager();
+        exit(0);
+    }
+    if (fork() == 0) {
+        escreverLog("PROCESS MONITOR_ENGINE CREATED");
+        monitorEngine();
+        exit(0);
+    }
+    
     /*
     sem = sem_open("SEM", O_CREAT | O_EXCL, 0700, 1);
     if(sem == SEM_FAILED){
@@ -168,6 +168,8 @@ void arranque(char *argv){
         exit(-1);
     }
     */
+    
+
    if (mkfifo(PIPE, O_CREAT | O_EXCL | 0600) == -1) {
         perror("Erro ao criar o pipe");
         escreverLog("ERROR: não foi possível criar o pipe");
@@ -191,6 +193,9 @@ void sigint(int signum){
 
 void limpeza(){
     printf("\nA realizar limpeza\n");
+    pthread_mutex_destroy(&mutex_mem);
+    pthread_mutex_destroy(&mutex_video_queue);
+    pthread_mutex_destroy(&mutex_others_queue);
 
     close(fd_pipe);
     unlink(PIPE);

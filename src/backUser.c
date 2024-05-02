@@ -1,16 +1,12 @@
 //Lucas Miguel Simões Loberto 2021219107
 //Simão Tadeu Ricacho Reis Moreira 2020218319
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <unistd.h>
 #include "backUser.h"
 
 #define BUFLEN 1024
+#define PIPE "../files/BACK_PIPE"
 
-FILE *logFile;
+//FILE *logFile;
 
 
 int main(int argc, char const *argv[]){
@@ -18,15 +14,45 @@ int main(int argc, char const *argv[]){
         printf("Numero de parametros errado\n./backoffice_user\n");
         exit(-1);
     }
+    
+    if (mkfifo(PIPE, O_CREAT | O_EXCL | 0600) == -1) {
+        perror("Erro ao criar o pipe");
+        //escreverLog("ERROR: não foi possível criar o pipe BACK_PIPE");
+        limpeza();
+        exit(-1);
+    }
+
     printMenu();
 
     if (fork() == 0) {
-        escreverLog("BACKOFFICE_USER SIMULATOR STARTING");
+        signal(SIGINT, sigint);
+        //escreverLog("BACKOFFICE_USER SIMULATOR STARTING");
         backoffice();
         exit(0);
     }
-    
+    wait(NULL);
+
     return 0;
+}
+
+void sigint(int signum){
+    printf(" recebido\nA terminar o programa\n");
+
+    limpeza();
+    exit(0);
+}
+
+void limpeza(){
+    printf("\nA realizar limpeza\n");
+
+    //close(fd_pipe);
+    unlink(PIPE);
+    //shmdt(shrmem);
+    //shmctl(shmid, IPC_RMID, NULL);
+    //fclose(logFile);
+    //fclose(f);
+
+    printf("Limpeza realizada. Saindo...\n");
 }
 
 void printMenu(){
@@ -34,7 +60,7 @@ void printMenu(){
 	printf("data_stats - Apresentar estatísticas\n");
 	printf("reset - Limpar todas as estatísticas\n");
     printf("----------------------\n");
-    logFile = fopen("../files/log.txt", "a");
+    //logFile = fopen("../files/log.txt", "a");
 }
 
 void gerarComandos(char *comando) {
@@ -43,6 +69,7 @@ void gerarComandos(char *comando) {
     comando[strlen(comando) - 1] = '\0';
 }
 
+/*
 void escreverLog(char *message){
     time_t currentTime;
     struct tm *localTime;
@@ -54,6 +81,7 @@ void escreverLog(char *message){
     fflush(stdout);
     fflush(logFile);
 }
+*/
 
 void backoffice(){
     //TODO: Implementar

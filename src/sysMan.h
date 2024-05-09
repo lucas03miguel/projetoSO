@@ -56,6 +56,7 @@ typedef struct {
 
 int N_USERS, N_SLOTS, AUTH_SERVERS_MAX, AUTH_PROC_TIME, MAX_VIDEO_WAIT, MAX_OTHERS_WAIT;
 int shmid, fd_pipe, glMsqId;
+pid_t pid_principal;
 MemStruct *shrmem;
 glMessageQueue msgQueue;
 pthread_t receiver_t, sender_t;

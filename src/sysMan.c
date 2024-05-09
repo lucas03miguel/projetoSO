@@ -11,14 +11,19 @@ int main(int argc, char *argv[]){
         printf("Numero de parametros errado\n./5g_auth_platform {config-file}\n");
         exit(-1);
     }
+    pid_principal = getpid();
     signal(SIGINT, sigint);
 
     arranque(argv[1]);
 
+    /*
+    printf("oiiiiiiiiiiiiiii\n");
     while (1) {
         printf("N_USERS: %d\nN_SLOTS: %d\nAUTH_SERVERS_MAX: %d\nAUTH_PROC_TIME: %d\nMAX_VIDEO_WAIT: %d\nMAX_OTHERS_WAIT: %d\n\n", N_USERS, N_SLOTS, AUTH_SERVERS_MAX, AUTH_PROC_TIME, MAX_VIDEO_WAIT, MAX_OTHERS_WAIT);
         sleep(2);
     }
+    */
+    printf("vou sair\n");
 
     return 0;
 }
@@ -172,16 +177,20 @@ void arranque(char *argv){
     */
     
 
-    for(int i = 0; i < 2 + 1; ++i)
+    for(int i = 0; i < 5; ++i)
     	wait(NULL);
+
+    printf("iasfnfd\n");
     //fclose(f);
 }
 
 void sigint(int signum){
-    printf(" recebido\nA terminar o programa\n");
-    escreverLog("SIGNAL SIGINT RECEIVED. TERMINATING PROGRAM");
-
-    limpeza();
+    if (getpid() == pid_principal) {
+        printf(" recebido\nA terminar o programa\n");
+        escreverLog("SIGNAL SIGINT RECEIVED. TERMINATING PROGRAM");
+    
+        limpeza();
+    }
     exit(0);
 }
 
@@ -238,7 +247,7 @@ void authorizationRequestManager() {
     pthread_join(sender_t, NULL);
 }
 
-void gerarEstatisticas() {
+void * gerarEstatisticas(void * arg) {
     while (1) {
         pthread_mutex_lock(&mutex_mem);
         msgQueue.type = 1;
@@ -251,12 +260,17 @@ void gerarEstatisticas() {
         pthread_mutex_unlock(&mutex_mem);
         printf("Vou enviar\n");
         msgsnd(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 0);
+        printf("Enviei\n");
         sleep(5);
 
         pthread_mutex_lock(&mutex_mem);
-        shrmem->stats->totalAuthReqsMusic = 0;
-        shrmem->stats->totalAuthReqsSocial = 0;
-        shrmem->stats->totalAuthReqsVideo = 0;
+        shrmem->stats->totalAuthReqsMusic++;
+        shrmem->stats->totalAuthReqsSocial++;
+        shrmem->stats->totalAuthReqsVideo++;
+        shrmem->stats->totalDataMusic++;
+        shrmem->stats->totalDataSocial++;
+        shrmem->stats->totalDataVideo++;
+        pthread_mutex_unlock(&mutex_mem);
     }
     
     pthread_exit(NULL);

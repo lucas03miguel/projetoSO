@@ -3,14 +3,11 @@
 
 #include "backUser.h"
 
-#define BUFLEN 1024
-#define PIPE "../files/BACK_PIPE"
-
 //FILE *logFile;
 
 
 int main(int argc, char const *argv[]){
-    if (argc != 1) {
+    if (argc != 1 && argv != NULL) {
         printf("Numero de parametros errado\n./backoffice_user\n");
         exit(-1);
     }
@@ -29,6 +26,7 @@ int main(int argc, char const *argv[]){
 }
 
 void sigint(int signum){
+    if (signum){};
     printf(" recebido\nA terminar o programa\n");
 
     limpeza();
@@ -51,12 +49,14 @@ void limpeza(){
 }
 
 void arranque() {
+    /*
     if (mkfifo(PIPE, O_CREAT | O_EXCL | 0600) == -1) {
         perror("Erro ao criar o pipe");
         //escreverLog("ERROR: não foi possível criar o pipe BACK_PIPE");
         limpeza();
         exit(-1);
     }
+    */
 
     glMsqId = msgget(123, IPC_CREAT | 0777);
 }
@@ -114,6 +114,8 @@ void backoffice(){
 }
 
 void * stats(void * arg){
+    if ((int *)arg){};
+
     while (1) {
         printf("Recebi stats\n");
         msgrcv(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 1, 0);
@@ -133,6 +135,8 @@ void * stats(void * arg){
 }
 
 void * command(void * arg){
+    if ((int *)arg){};
+
     while (1) {
         char comando[BUFLEN], token[BUFLEN];
         gerarComandos(comando, token);

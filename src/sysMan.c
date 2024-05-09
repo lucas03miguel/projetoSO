@@ -2,9 +2,6 @@
 //Simão Tadeu Ricacho Reis Moreira 2020218319
 #include "sysMan.h"
 
-#define BUFLEN 1024
-#define PIPE "../files/pipe"
-
 
 int main(int argc, char *argv[]){
     if (argc != 2) {
@@ -24,7 +21,6 @@ int main(int argc, char *argv[]){
     }
     */
     printf("vou sair\n");
-
     return 0;
 }
 
@@ -92,8 +88,8 @@ void arranque(char *argv){
         exit(-1);
     }
 
-    AUTH_SERVERS_MAX = atoi(linhas[2]);
-    if (AUTH_SERVERS_MAX < 1){
+    AUTH_SERVERS_INIT = atoi(linhas[2]);
+    if (AUTH_SERVERS_INIT < 1){
         printf("Erro: o número de Authorization Engines tem de ser maior ou igual que 1 e inteiro.\n");
         escreverLog("ERROR: número de Authorization Engines inválido");
         limpeza();
@@ -144,14 +140,6 @@ void arranque(char *argv){
     shrmem->mobileUsers = (MobileUser *)((void *)shrmem + sizeof(MobileUser));
     shrmem->stats = (Stats *)((void *)shrmem + N_USERS * sizeof(MobileUser) + sizeof(MemStruct));
 
-
-   if (mkfifo(PIPE, O_CREAT | O_EXCL | 0600) == -1) {
-        perror("Erro ao criar o pipe");
-        escreverLog("ERROR: não foi possível criar o pipe");
-        limpeza();
-        exit(-1);
-    }
-
     glMsqId = msgget(123, IPC_CREAT | 0700);
 
 
@@ -166,6 +154,7 @@ void arranque(char *argv){
         exit(0);
     }
     
+    
     /*
     sem = sem_open("SEM", O_CREAT | O_EXCL, 0700, 1);
     if(sem == SEM_FAILED){
@@ -177,18 +166,19 @@ void arranque(char *argv){
     */
     
 
-    for(int i = 0; i < 5; ++i)
+    for(int i = 0; i < 2; ++i)
     	wait(NULL);
 
-    printf("iasfnfd\n");
     //fclose(f);
 }
 
 void sigint(int signum){
+    if (signum){};
+
     if (getpid() == pid_principal) {
         printf(" recebido\nA terminar o programa\n");
         escreverLog("SIGNAL SIGINT RECEIVED. TERMINATING PROGRAM");
-    
+
         limpeza();
     }
     exit(0);
@@ -196,16 +186,23 @@ void sigint(int signum){
 
 void limpeza(){
     printf("\nA realizar limpeza\n");
+    pthread_cond_destroy(&cond);
     pthread_mutex_destroy(&mutex_mem);
     pthread_mutex_destroy(&mutex_video_queue);
     pthread_mutex_destroy(&mutex_others_queue);
 
-    close(fd_pipe);
-    unlink(PIPE);
+    free(vsq);
+    free(osq);
+
+    close(fd_back_pipe);
+    close(fd_user_pipe);
+    unlink(BACK_PIPE);
+    unlink(USER_PIPE);
     shmdt(shrmem);
     shmctl(shmid, IPC_RMID, NULL);
     fclose(logFile);
     fclose(f);
+
 
     printf("Limpeza realizada. Saindo...\n");
 }
@@ -222,7 +219,43 @@ void escreverLog(char *message){
     fflush(logFile);
 }
 
+void authorizationEngine(int id) {
+    if (id){};
+
+}
+
 void authorizationRequestManager() {
+    vsq = (Video_Streaming_Queue *) malloc(N_SLOTS * sizeof(Video_Streaming_Queue));
+    if (vsq == NULL) {
+        printf("Erro ao alocar memoria para a Video_Streaming_Queue\n");
+        escreverLog("Erro ao alocar memoria para a Video_Streaming_Queue");
+        limpeza();
+        exit(-1);
+    }
+
+    osq = (Other_Services_Queue *) malloc(N_SLOTS * sizeof(Other_Services_Queue));
+    if (osq == NULL) {
+        printf("Erro ao alocar memoria para a Other_Services_Queue\n");
+        escreverLog("Erro ao alocar memoria para a Other_Services_Queue");
+        limpeza();
+        exit(-1);
+    }
+
+    if (mkfifo(BACK_PIPE, O_CREAT | O_EXCL | 0600) == -1) {
+        perror("Erro ao criar o pipe BACK_PIPE");
+        escreverLog("ERROR: não foi possível criar o pipe BACK_PIPE");
+        limpeza();
+        exit(-1);
+    }
+
+    if (mkfifo(USER_PIPE, O_CREAT | O_EXCL | 0600) == -1) {
+        perror("Erro ao criar o pipe USER_PIPE");
+        escreverLog("ERROR: não foi possível criar o pipe USER_PIPE");
+        limpeza();
+        exit(-1);
+    }
+
+
     if(pthread_create(&receiver_t, NULL, receiver, NULL) == -1){
     	perror("Erro ao criar a thread Receiver");
   		escreverLog("ERROR: não foi possível criar a thread Receiver");
@@ -241,13 +274,71 @@ void authorizationRequestManager() {
     printf("Thread Sender criada\n");
     escreverLog("THREAD SENDER CREATED");
 
+
+
     //TODO: completar
 
     pthread_join(receiver_t, NULL);
     pthread_join(sender_t, NULL);
 }
 
+void * receiver(void *arg) {
+    if((int *)arg) {};
+
+    if ((fd_back_pipe = open(BACK_PIPE, O_RDONLY)) == -1) {
+        perror("Erro ao abrir o pipe BACK_PIPE");
+        escreverLog("ERROR: não foi possível abrir o pipe BACK_PIPE");
+        limpeza();
+        exit(-1);
+    }
+    if ((fd_user_pipe = open(USER_PIPE, O_RDONLY)) == -1) {
+        perror("Erro ao abrir o pipe USER_PIPE");
+        escreverLog("ERROR: não foi possível abrir o pipe USER_PIPE");
+        limpeza();
+        exit(-1);
+    }
+
+    FD_ZERO(&read_set);
+    FD_SET(fd_back_pipe, &read_set);
+    FD_SET(fd_user_pipe, &read_set);
+
+    while (1) {
+        if (select(fd_user_pipe + 1, &read_set, NULL, NULL, NULL) > 0) {
+            if (FD_ISSET(fd_back_pipe, &read_set)) {
+                //TODO: nao sei o que fazer
+            }
+
+            if (FD_ISSET(fd_user_pipe, &read_set)) {
+                // opa ya, testa aí
+            }
+        }
+    }
+
+    pthread_exit(NULL);
+    return NULL;
+}
+
+void * sender(void *arg) {
+    if((int *)arg) {};
+    //TODO: completar
+
+    pthread_exit(NULL);
+    return NULL;
+}
+
+void monitorEngine() {
+    //TODO: completar
+    pthread_t stats_t, alert_t;
+    pthread_create(&stats_t, NULL, gerarEstatisticas, NULL);
+    pthread_create(&alert_t, NULL, gerarAlertas, NULL);
+
+    pthread_join(stats_t, NULL);
+    pthread_join(alert_t, NULL);
+}
+
 void * gerarEstatisticas(void * arg) {
+    if((int *)arg) {};
+
     while (1) {
         pthread_mutex_lock(&mutex_mem);
         msgQueue.type = 1;
@@ -278,30 +369,17 @@ void * gerarEstatisticas(void * arg) {
 }
 
 void * gerarAlertas(void *arg) {
+    if((int *)arg) {};
 
-    pthread_exit(NULL);
-    return NULL;
-}
+    while (1) {
+        //pthread_mutex_lock(&mutex_mem);
+        while (/*TODO: completar */1) {
+            pthread_cond_wait(&cond, &mutex_mem);
+        }
 
-void monitorEngine() {
-    //TODO: completar
-    pthread_t stats_t, alert_t;
-    pthread_create(&stats_t, NULL, gerarEstatisticas, NULL);
-    pthread_create(&alert_t, NULL, gerarAlertas, NULL);
 
-    pthread_join(stats_t, NULL);
-    pthread_join(alert_t, NULL);
-}
+    }
 
-void * receiver(void *arg) {
-    //TODO: completar
-
-    pthread_exit(NULL);
-    return NULL;
-}
-
-void * sender(void *arg) {
-    //TODO: completar
 
     pthread_exit(NULL);
     return NULL;

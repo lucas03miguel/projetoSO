@@ -20,6 +20,9 @@
 #include <signal.h>
 #include <sys/msg.h>
 
+#define BUFLEN 1024
+#define PIPE "/tmp/BACK_PIPE"
+
 typedef struct {
     long type;
     int totalDataVideo;

@@ -3,11 +3,24 @@
 
 #include "mobileUser.h"
 
+
+
 //FILE *logFile;
 
 
 int main(int argc, char *argv[]){
     detecaoErros(argc, argv);
+
+    printf("Esperando aprovação para registar...\n");
+    sleep(2);
+
+    if ((fd_pipe = open(USER_PIPE, O_WRONLY)) == -1) {
+        perror("Erro ao abrir o pipe\n");
+        exit(-1);
+    }
+
+    sprintf(message, "%d#%d", getpid(), PLAFOND);
+    write(fd_pipe, &message, sizeof(message));
 
     if (fork() == 0) {
         //escreverLog("MOBILE_USER SIMULATOR STARTING");
@@ -26,8 +39,6 @@ void detecaoErros(int n, char *args[]) {
         exit(-1);
     }
 
-    //logFile = fopen("../files/log.txt", "a");
-    //char message[BUFLEN];
     int letras = 0;
     for (int i = 1; i < n; i++) {
         for (int j = 0; args[i][j] != '\0'; j++) {
@@ -112,11 +123,50 @@ void escreverLog(char *message){
 */
 
 void mobile() {
-    //TODO: Implementar
+    pthread_create(&video_t, NULL, video, NULL);
+    pthread_create(&music_t, NULL, music, NULL);
+    pthread_create(&social_t, NULL, social, NULL);
 
+
+    pthread_join(video_t, NULL);
+    pthread_join(music_t, NULL);
+    pthread_join(social_t, NULL);
+    
+
+    /*
     while (1) {
         printf("PLAFOND: %d\nN_PEDIDOS: %d\nINTERVALO_VIDEO: %d\nINTERVALO_MUSIC: %d\nINTERVALO_SOCIAL: %d\nDADOS_RESERVAR: %d\n\n", PLAFOND, N_PEDIDOS, INTERVALO_VIDEO, INTERVALO_MUSIC, INTERVALO_SOCIAL, DADOS_RESERVAR);
         sleep(2);
     }
     
+    */
+}
+
+
+void * video(void *args) {
+    printf("%d\n", getppid());
+
+
+
+    pthread_exit(NULL);
+    return NULL;
+}
+
+
+void * music(void *args) {
+    printf("%d\n", getppid());
+
+
+
+    pthread_exit(NULL);
+    return NULL;
+}
+
+
+void * social(void *args) {
+    printf("%d\n", getppid());
+
+
+    pthread_exit(NULL);
+    return NULL;
 }

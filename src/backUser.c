@@ -117,6 +117,14 @@ void * stats(void * arg){
     while (1) {
         printf("Recebi stats\n");
         msgrcv(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 0, 0);
+        printf("oi\n");
+        printf("Total de pedidos de autenticação de música: %d\n", msgQueue.totalAuthReqsMusic);
+        printf("Total de pedidos de autenticação de social: %d\n", msgQueue.totalAuthReqsSocial);
+        printf("Total de pedidos de autenticação de video: %d\n", msgQueue.totalAuthReqsVideo);
+        printf("Total de dados de música: %d\n", msgQueue.totalDataMusic);
+        printf("Total de dados de social: %d\n", msgQueue.totalDataSocial);
+        printf("Total de dados de video: %d\n", msgQueue.totalDataVideo);
+        
     }
     
 

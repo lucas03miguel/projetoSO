@@ -19,6 +19,7 @@
 #include <sys/wait.h>
 #include <sys/select.h>
 #include <signal.h>
+#include <sys/msg.h>
 
 typedef struct {
     int plafondInicial;

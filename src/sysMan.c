@@ -238,11 +238,45 @@ void authorizationRequestManager() {
     pthread_join(sender_t, NULL);
 }
 
+void gerarEstatisticas() {
+    while (1) {
+        pthread_mutex_lock(&mutex_mem);
+        msgQueue.type = 1;
+        msgQueue.totalAuthReqsMusic = shrmem->stats->totalAuthReqsMusic;
+        msgQueue.totalAuthReqsSocial = shrmem->stats->totalAuthReqsSocial;
+        msgQueue.totalAuthReqsVideo = shrmem->stats->totalAuthReqsVideo;
+        msgQueue.totalDataMusic = shrmem->stats->totalDataMusic;
+        msgQueue.totalDataSocial = shrmem->stats->totalDataSocial;
+        msgQueue.totalDataVideo = shrmem->stats->totalDataVideo;
+        pthread_mutex_unlock(&mutex_mem);
+        printf("Vou enviar\n");
+        msgsnd(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 0);
+        sleep(5);
+
+        pthread_mutex_lock(&mutex_mem);
+        shrmem->stats->totalAuthReqsMusic = 0;
+        shrmem->stats->totalAuthReqsSocial = 0;
+        shrmem->stats->totalAuthReqsVideo = 0;
+    }
+    
+    pthread_exit(NULL);
+    return NULL;
+}
+
+void * gerarAlertas(void *arg) {
+
+    pthread_exit(NULL);
+    return NULL;
+}
+
 void monitorEngine() {
     //TODO: completar
+    pthread_t stats_t, alert_t;
+    pthread_create(&stats_t, NULL, gerarEstatisticas, NULL);
+    pthread_create(&alert_t, NULL, gerarAlertas, NULL);
 
-
-
+    pthread_join(stats_t, NULL);
+    pthread_join(alert_t, NULL);
 }
 
 void * receiver(void *arg) {

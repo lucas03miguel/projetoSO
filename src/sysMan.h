@@ -43,6 +43,26 @@ typedef struct {
     
 } MemStruct;
 
+typedef struct {
+    long type;
+    int totalDataVideo;
+    int totalAuthReqsVideo;
+    int totalDataMusic;
+    int totalAuthReqsMusic;
+    int totalDataSocial;
+    int totalAuthReqsSocial;
+} glMessageQueue;
+
+int N_USERS, N_SLOTS, AUTH_SERVERS_MAX, AUTH_PROC_TIME, MAX_VIDEO_WAIT, MAX_OTHERS_WAIT;
+int shmid, fd_pipe, glMsqId;
+MemStruct *shrmem;
+glMessageQueue msgQueue;
+pthread_t receiver_t, sender_t;
+pthread_mutex_t mutex_mem = PTHREAD_MUTEX_INITIALIZER, mutex_video_queue = PTHREAD_MUTEX_INITIALIZER, mutex_others_queue = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond;
+sem_t *sem_monitor, *sem_auth_engine, *sem_auth_request, *sem_sys_manager;
+FILE *logFile, *f;
+
 void arranque(char *filename);
 void sigint(int signum);
 void limpeza();

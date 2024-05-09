@@ -11,7 +11,6 @@
 #include <sys/shm.h>
 #include <pthread.h>
 #include <semaphore.h>
-#include <sys/wait.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -19,13 +18,29 @@
 #include <sys/wait.h>
 #include <sys/select.h>
 #include <signal.h>
+#include <sys/msg.h>
 
+typedef struct {
+    long type;
+    int totalDataVideo;
+    int totalAuthReqsVideo;
+    int totalDataMusic;
+    int totalAuthReqsMusic;
+    int totalDataSocial;
+    int totalAuthReqsSocial;
+} glMessageQueue;
 
+int glMsqId;
+pthread_t stats_t, command_t;
+glMessageQueue msgQueue;
 //void escreverLog(char *message);
+void arranque();
 void sigint(int signum);
 void limpeza();
 void printMenu();
-void gerarComandos(char *comando);
+void gerarComandos(char *comando, char *token);
 void backoffice();
+void * stats(void *arg);
+void * command(void *arg);
 
 #endif // BACKUSER_H

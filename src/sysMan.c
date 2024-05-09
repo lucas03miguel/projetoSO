@@ -5,15 +5,6 @@
 #define BUFLEN 1024
 #define PIPE "../files/pipe"
 
-int N_USERS, N_SLOTS, AUTH_SERVERS_MAX, AUTH_PROC_TIME, MAX_VIDEO_WAIT, MAX_OTHERS_WAIT;
-int shmid, fd_pipe;
-MemStruct *shrmem;
-pthread_t receiver_t, sender_t;
-pthread_mutex_t mutex_mem = PTHREAD_MUTEX_INITIALIZER, mutex_video_queue = PTHREAD_MUTEX_INITIALIZER, mutex_others_queue = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t cond;
-sem_t *sem_monitor, *sem_auth_engine, *sem_auth_request, *sem_sys_manager;
-FILE *logFile, *f;
-
 
 int main(int argc, char *argv[]){
     if (argc != 2) {
@@ -23,7 +14,7 @@ int main(int argc, char *argv[]){
     signal(SIGINT, sigint);
 
     arranque(argv[1]);
-    
+
     while (1) {
         printf("N_USERS: %d\nN_SLOTS: %d\nAUTH_SERVERS_MAX: %d\nAUTH_PROC_TIME: %d\nMAX_VIDEO_WAIT: %d\nMAX_OTHERS_WAIT: %d\n\n", N_USERS, N_SLOTS, AUTH_SERVERS_MAX, AUTH_PROC_TIME, MAX_VIDEO_WAIT, MAX_OTHERS_WAIT);
         sleep(2);
@@ -148,6 +139,17 @@ void arranque(char *argv){
     shrmem->mobileUsers = (MobileUser *)((void *)shrmem + sizeof(MobileUser));
     shrmem->stats = (Stats *)((void *)shrmem + N_USERS * sizeof(MobileUser) + sizeof(MemStruct));
 
+
+   if (mkfifo(PIPE, O_CREAT | O_EXCL | 0600) == -1) {
+        perror("Erro ao criar o pipe");
+        escreverLog("ERROR: não foi possível criar o pipe");
+        limpeza();
+        exit(-1);
+    }
+
+    glMsqId = msgget(123, IPC_CREAT | 0700);
+
+
     if (fork() == 0) {
         escreverLog("PROCESS AUTHORIZATION_REQUEST_MANAGER CREATED");
         authorizationRequestManager();
@@ -168,14 +170,6 @@ void arranque(char *argv){
         exit(-1);
     }
     */
-    
-
-   if (mkfifo(PIPE, O_CREAT | O_EXCL | 0600) == -1) {
-        perror("Erro ao criar o pipe");
-        escreverLog("ERROR: não foi possível criar o pipe");
-        limpeza();
-        exit(-1);
-    }
     
 
     for(int i = 0; i < 2 + 1; ++i)
@@ -246,6 +240,9 @@ void authorizationRequestManager() {
 
 void monitorEngine() {
     //TODO: completar
+
+
+
 }
 
 void * receiver(void *arg) {

@@ -11,4 +11,3 @@ bin/backoffice_user: src/backUser.c src/backUser.h
 
 bin/mobile_user: src/mobileUser.c src/mobileUser.h 
 	gcc -Wall -Wextra -pthread -D_REENTRANT -g $< -o $@
-

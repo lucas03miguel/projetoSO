@@ -43,14 +43,22 @@ typedef struct {
 } Stats;
 
 typedef struct {
+    int pid;
+    int disponivel; // 0 - ocupado; 1 - disponivel
+    int fd[2];
+} AuthorizationEnginePipes;
+
+typedef struct {
     int n_users;
 	MobileUser *mobileUsers;
     Stats *stats;
-    
+    AuthorizationEnginePipes *authEnginePipes;
+
 } MemStruct;
 
 typedef struct {
-    long type;
+    long type; // 1 - estatistica; 2 - alerta; pid - user
+    int sucesso; // 0 - falha; 1 - sucesso
     int totalDataVideo;
     int totalAuthReqsVideo;
     int totalDataMusic;
@@ -60,8 +68,8 @@ typedef struct {
 } glMessageQueue;
 
 typedef struct {
-    char teste[BUFLEN];
-    int pedido;
+    int servico; // 0 - registo; 1 - video; 2 - music; 3 - social; -1 - null
+    int dados_reservar;
     int id;
     time_t enqueued_time; // tempo em que foi inserido na fila
 } Video_Streaming_Queue;
@@ -83,9 +91,16 @@ typedef struct node_other{
     struct node_other *next;
 } Node_other;
 
+struct enviar_pipe {
+    int servico;
+    int dados_reservar;
+    int id;
+};
 
+
+char message[BUFLEN];
 int N_MAX_USERS, N_SLOTS, AUTH_SERVERS_INIT, AUTH_PROC_TIME, MAX_VIDEO_WAIT, MAX_OTHERS_WAIT;
-int shmid, fd_back_pipe, fd_user_pipe, glMsqId, **fd_pipes_auth;
+int shmid, fd_back_pipe, fd_user_pipe, glMsqId, enginesCounter;
 fd_set read_set;
 pid_t pid_principal;
 MemStruct *shrmem;
@@ -93,8 +108,8 @@ glMessageQueue msgQueue;
 Node_video *video_queue;
 Node_other *other_queue;
 pthread_t receiver_t, sender_t, stats_t, alert_t;
-pthread_mutex_t mutex_mem = PTHREAD_MUTEX_INITIALIZER, mutex_queues = PTHREAD_MUTEX_INITIALIZER, mutex_more_engines = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t cond = PTHREAD_COND_INITIALIZER, cond_more_engines = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t mutex_mem = PTHREAD_MUTEX_INITIALIZER, mutex_queues = PTHREAD_MUTEX_INITIALIZER, mutex_more_engines = PTHREAD_MUTEX_INITIALIZER, mutex_engine_free = PTHREAD_MUTEX_INITIALIZER, mutex_auth_request = PTHREAD_MUTEX_INITIALIZER, mutex_auth_engine = PTHREAD_MUTEX_INITIALIZER, mutex_monitor = PTHREAD_MUTEX_INITIALIZER, mutex_log = PTHREAD_MUTEX_INITIALIZER, mutex_stats = PTHREAD_MUTEX_INITIALIZER, mutex_alert = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond = PTHREAD_COND_INITIALIZER, cond_more_engines = PTHREAD_COND_INITIALIZER, cond_engine_free = PTHREAD_COND_INITIALIZER;
 sem_t *sem_monitor, *sem_auth_engine, *sem_auth_request, *sem_sys_manager;
 FILE *logFile, *f;
 

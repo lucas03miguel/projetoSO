@@ -26,8 +26,11 @@ int main(int argc, char *argv[]){
         exit(-1);
     }
 
-    msgrcv(msqid, &message, sizeof(message), getpid(), 0);
-    printf("Recebi: %s\n", message);
+
+    msgrcv(msqid, &msg, sizeof(msg), getpid(), 0);
+    printf("Recebi: %s\n", msg.sucesso ? "Sucesso" : "Falha");
+
+    while(1);
     //sleep(1);
 
 

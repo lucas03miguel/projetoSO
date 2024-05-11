@@ -26,7 +26,6 @@ int main(int argc, char *argv[]){
 
 void arranque(char *argv){
     int invalido = 0;
-    char message[BUFLEN];
     char filename[BUFLEN] = "../files/";
     strcat(filename, argv);
 
@@ -120,7 +119,7 @@ void arranque(char *argv){
         exit(-1);
     }
 
-    int size = N_MAX_USERS * sizeof(MobileUser) + sizeof(Stats) + sizeof(MemStruct); 
+    int size = N_MAX_USERS * sizeof(MobileUser) + sizeof(Stats) + AUTH_SERVERS_INIT * sizeof(AuthorizationEnginePipes) + sizeof(MemStruct); 
     shmid = shmget(IPC_PRIVATE, size, IPC_CREAT | 0777);
     if (shmid == -1) {
         perror("Erro ao criar a memória partilhada");
@@ -138,7 +137,8 @@ void arranque(char *argv){
     }
 
     shrmem->mobileUsers = (MobileUser *)((void *)shrmem + sizeof(MobileUser));
-    shrmem->stats = (Stats *)((void *)shrmem + N_MAX_USERS * sizeof(MobileUser) + sizeof(MemStruct));
+    shrmem->stats = (Stats *)((void *)shrmem + N_MAX_USERS * sizeof(MobileUser));
+    shrmem->authEnginePipes = (AuthorizationEnginePipes *)((void *)shrmem + N_MAX_USERS * sizeof(MobileUser) + sizeof(Stats) + sizeof(MemStruct));
 
     glMsqId = msgget(123, IPC_CREAT | 0777);
     printf("id: %d\n", glMsqId);
@@ -196,29 +196,37 @@ void terminar() {
 
 void limpeza(){
     printf("\nA realizar limpeza\n");
+
+    close(fd_back_pipe);
+    close(fd_user_pipe);
+    for (int i = 0; i < AUTH_SERVERS_INIT; i++) {
+        pthread_mutex_lock(&mutex_mem);
+        close(shrmem->authEnginePipes[i].fd[0]);
+        printf("teste\n");
+        close(shrmem->authEnginePipes[i].fd[1]);
+        pthread_mutex_unlock(&mutex_mem);
+        //printf("oiiiii\n");
+        //printf("oiiii\n");
+        //printf("%d %d\n", fd_pipes_auth[i][0], fd_pipes_auth[i][1]);
+        //printf("oii\n");
+        //free(shrmem->authEnginePipes[i]);
+        //printf("oi\n");
+    }
+    //free(fd_pipes_auth);
+
     pthread_cond_destroy(&cond);
     pthread_cond_destroy(&cond_more_engines);
+    pthread_cond_destroy(&cond_engine_free);
     pthread_mutex_destroy(&mutex_mem);
     pthread_mutex_destroy(&mutex_queues);
     pthread_mutex_destroy(&mutex_more_engines);
+    pthread_mutex_destroy(&mutex_engine_free);
 
     destroy_other_queue(&other_queue);
     destroy_video_queue(&video_queue);
 
     msgctl(glMsqId, IPC_RMID, NULL);
 
-    close(fd_back_pipe);
-    close(fd_user_pipe);
-    for (int i = 0; i < AUTH_SERVERS_INIT; i++) {
-        printf("oiiiii\n");
-        close(fd_pipes_auth[i][0]);
-        printf("oiii\n");
-        close(fd_pipes_auth[i][1]);
-        printf("oi\n");
-        free(fd_pipes_auth[i]);
-        printf("o\n");
-    }
-    free(fd_pipes_auth);
 
     unlink(BACK_PIPE);
     unlink(USER_PIPE);
@@ -251,6 +259,20 @@ void enqueue_other(Node_other **head, Other_Services_Queue other) {
         escreverLog("ERROR: nao foi possivel alocar memoria para o novo no da fila other");
         return;
     }
+
+    int count = 0;
+    Node_other *aux = *head;
+    while (aux != NULL) {
+        count++;
+        aux = aux->next;
+    }
+    printf("count: %d\n", count);
+    if (count >= N_SLOTS) {
+        printf("Erro: Fila de outros serviços está cheia. Eliminando pedido...\n");
+        escreverLog("ERROR: nao foi possivel escrever na fila de outros servicoes.");
+        return;
+    }
+
     other.enqueued_time = time(NULL);
     newNode->osq = other;
     newNode->next = NULL;
@@ -267,7 +289,7 @@ void enqueue_other(Node_other **head, Other_Services_Queue other) {
 
 Other_Services_Queue dequeue_other(Node_other **head) {
     if (*head == NULL)
-        return (Other_Services_Queue){-1, -1, -1, time(NULL)};
+        return (Other_Services_Queue){-1, -1, -1, -1};
 
     Node_other *temp = *head;
     Other_Services_Queue item = temp->osq;
@@ -301,6 +323,21 @@ void enqueue_video(Node_video **head, Video_Streaming_Queue video) {
         escreverLog("ERROR: nao foi possivel alocar memoria para o novo no da fila other");
         return;
     }
+
+    int count = 0;
+    Node_video *aux = *head;
+    while (aux != NULL) {
+        count++;
+        aux = aux->next;
+    }
+
+    // Verificar se a fila já está cheia
+    if (count >= N_SLOTS) {
+        printf("A fila de vídeo está cheia.\n");
+        escreverLog("Tentativa de enfileirar em uma fila cheia (vídeo).");
+        return;
+    }
+
     video.enqueued_time = time(NULL);
     newNode->vsq = video;
     newNode->next = NULL;
@@ -317,7 +354,7 @@ void enqueue_video(Node_video **head, Video_Streaming_Queue video) {
 
 Video_Streaming_Queue dequeue_video(Node_video **head) {
     if (*head == NULL)
-        return (Video_Streaming_Queue){"null", -1, -1, time(NULL)};
+        return (Video_Streaming_Queue){-1, -1, -1, -1};
 
     Node_video *temp = *head;
     Video_Streaming_Queue item = temp->vsq;
@@ -341,12 +378,6 @@ void destroy_video_queue(Node_video **head) {
     }
 
     *head = NULL;
-}
-
-
-void authorizationEngine(int id) {
-    if (id){};
-
 }
 
 void authorizationRequestManager() {
@@ -386,6 +417,7 @@ void authorizationRequestManager() {
     printf("Thread Sender criada\n");
     escreverLog("THREAD SENDER CREATED");
 
+    /*
     fd_pipes_auth = malloc(AUTH_SERVERS_INIT * sizeof(int *));
     if (fd_pipes_auth == NULL) {
         perror("Erro ao alocar memória para os file descriptors dos authorization engines");
@@ -393,42 +425,67 @@ void authorizationRequestManager() {
         limpeza();
         exit(-1);
     }
+    */
     for (int i = 0; i < AUTH_SERVERS_INIT; i++) {
+        /*
         fd_pipes_auth[i] = malloc(2 * sizeof(int));
         if (fd_pipes_auth[i] == NULL) {
             perror("Erro ao alocar memoria para os canais dos file descriptors");
             escreverLog("ERROR: nao foi possivel alocar memoria para os canais dos file descriptors");
             limpeza();
             exit(-1);
-        }
-        if (pipe(fd_pipes_auth[i]) == -1) {
+        }*/
+        pthread_mutex_lock(&mutex_mem);
+        ++enginesCounter;
+        if (pipe(shrmem->authEnginePipes[i].fd) == -1) {
+            pthread_mutex_unlock(&mutex_mem);
             perror("Erro ao criar o pipe");
             escreverLog("ERROR: nao foi possivel criar o pipe");
             limpeza();
             exit(-1);
         }
+        pthread_mutex_unlock(&mutex_mem);
+
+        printf("criei aí o pipe e tals\n");
+        //printf("opa vamos testar: %d %d\n", fd_pipes_auth[i][0], fd_pipes_auth[i][1]);
         if (fork() == 0) {
-            authorizationEngine(i);
+            pthread_mutex_lock(&mutex_mem);
+            shrmem->authEnginePipes[i].pid = getpid();
+            shrmem->authEnginePipes[i].disponivel = 1;
+            close(shrmem->authEnginePipes[i].fd[1]);
+            pthread_mutex_unlock(&mutex_mem);
+
+            sprintf(message, "AUTHORIZATION_ENGINE %d STARTING", i + 1);
+            escreverLog(message);
+            authorizationEngine(i + 1);
             exit(0);
+        } else {
+            pthread_mutex_lock(&mutex_mem);
+            close(shrmem->authEnginePipes[i].fd[0]);
+            pthread_mutex_unlock(&mutex_mem);
+        
         }
     }
-    for (int i = 0; i < AUTH_SERVERS_INIT; i++)
-    {
+    for (int i = 0; i < AUTH_SERVERS_INIT; i++) {
         wait(NULL);
     }
     printf("atao pa\n");
     
     
     // meter loop com variavel e tals
+    /*
     while (1) {
-        while (/* coiso e tals */1) {
+        pthread_mutex_lock(&mutex_more_engines);
+        while (coiso e tals 1) {
             pthread_cond_wait(&cond_more_engines, &mutex_more_engines);
         }
+        pthread_mutex_unlock(&mutex_more_engines);
         
 
 
 
     }
+    */
 
 
     //TODO: completar
@@ -490,14 +547,13 @@ void * receiver(void *arg) {
                     int id = atoi(strtok(buffer, "#"));
                     int plafond = atoi(strtok(NULL, "#"));
 
-                    pthread_mutex_lock(&mutex_queues);
-
                     Other_Services_Queue aux;
                     aux.id = id;
                     aux.servico = 0;
                     aux.dados_reservar = plafond;
-                    enqueue_other(&other_queue, aux);
 
+                    pthread_mutex_lock(&mutex_queues);
+                    enqueue_other(&other_queue, aux);
                     pthread_cond_signal(&cond);
                     pthread_mutex_unlock(&mutex_queues);
 
@@ -547,7 +603,7 @@ void * receiver(void *arg) {
                     strcpy(servico, strtok(NULL, "#"));
                     int pedido = atoi(strtok(NULL, "#"));
 
-
+                    printf("%d %d", pedido, id);
 
 
                 } 
@@ -565,33 +621,48 @@ void * receiver(void *arg) {
     return NULL;
 }
 
-void verificar_tempo_other() {
+int verificar_tempo_other(Other_Services_Queue pedido_other) {
     time_t current_time = time(NULL);
     if (other_queue != NULL) {
-        double diff = difftime(current_time, other_queue->osq.enqueued_time);
+        double diff = difftime(current_time, pedido_other.enqueued_time);
         printf("Diff: %f\n", diff);
         if (diff > MAX_OTHERS_WAIT / 1000) {
-            Node_other *temp = other_queue;
-            other_queue = other_queue->next;
-            free(temp);
             printf("Pedido de outro serviço expirado removido.\n");
             escreverLog("Pedido de outro serviço expirado removido.");
-        }
+            return 1;
+        } 
+        //return aux;
+    } else {
+        printf("estou vazia other\n");
     }
-
+    return 0;
 }
 
-void verificar_tempo_video() {
+int verificar_tempo_video(Video_Streaming_Queue pedido_video) {
     time_t current_time = time(NULL);
     if (video_queue != NULL) {
-        if (difftime(current_time, video_queue->vsq.enqueued_time) > MAX_VIDEO_WAIT / 1000) {
-            Node_video *temp = video_queue;
-            video_queue = video_queue->next;
-            free(temp);
+        if (difftime(current_time, pedido_video.enqueued_time) > MAX_VIDEO_WAIT / 1000) {
+            //dequeue_video(&video_queue);
             printf("Pedido de vídeo expirado removido.\n");
             escreverLog("Pedido de vídeo expirado removido.");
+            return 1;
         }
+    } else {
+        printf("estou vazia\n");
     }
+    return 0;
+}
+
+int pesquisa_engine_disponivel() {
+    for (int i = 0; i < enginesCounter; i++) {
+        pthread_mutex_lock(&mutex_mem);
+        if (shrmem->authEnginePipes[i].disponivel == 1) {
+            pthread_mutex_unlock(&mutex_mem);
+            return i + 1;
+        }
+        pthread_mutex_unlock(&mutex_mem);
+    }
+    return -1;
 }
 
 void * sender(void *arg) {
@@ -609,18 +680,135 @@ void * sender(void *arg) {
 
         printf("Alertaste sim senhora :)\n");
 
-        verificar_tempo_video();
-        verificar_tempo_other();
+        Video_Streaming_Queue pedido_video = {-1, -1, -1, -1};
+        Other_Services_Queue pedido_other = {-1, -1, -1, -1};
+        int tipo_pedido = -1;
+        pthread_mutex_lock(&mutex_queues);
+        if (video_queue != NULL) {
+            pedido_video = dequeue_video(&video_queue);
+            tipo_pedido = 1;
+            if (verificar_tempo_video(pedido_video)) {
+                pthread_mutex_unlock(&mutex_queues);
+                continue;
+            }
+        } else {
+            pedido_other = dequeue_other(&other_queue);
+            tipo_pedido = 0;
+            if(verificar_tempo_other(pedido_other)){
+                pthread_mutex_unlock(&mutex_queues);
+                continue;
+            }
+            
+        }
+        pthread_mutex_unlock(&mutex_queues);
+        
+
+
+        int engine = pesquisa_engine_disponivel();
+        if (engine == -1) {
+            printf("Não há engines disponíveis. À espera que algum fique livre\n");
+            pthread_mutex_lock(&mutex_engine_free);
+            while ((engine = pesquisa_engine_disponivel()) == -1) {
+                pthread_cond_wait(&cond_engine_free, &mutex_engine_free);
+            }
+            pthread_mutex_unlock(&mutex_engine_free);
+            printf("Já há engines disponíveis %d\n", engine);
+        }
+
+        
+        if (tipo_pedido == 1) {
+            sprintf(message, "SENDER: VIDEO AUTHORIZATION REQUEST (ID = %d) SENT FOR PROCESSING ON AUTHORIZATION_ENGINE %d", pedido_video.id , engine);
+            escreverLog(message);
+
+            struct enviar_pipe aux;
+            aux.servico = pedido_video.servico;
+            aux.dados_reservar = pedido_video.dados_reservar;
+            aux.id = pedido_video.id;
+            
+            pthread_mutex_lock(&mutex_queues);
+            //close(shrmem->authEnginePipes[engine].fd[0]);
+            write(shrmem->authEnginePipes[engine].fd[1], &aux, sizeof(aux));
+            pthread_mutex_unlock(&mutex_queues);
+
+        }
+        else {
+            sprintf(message, "SENDER: OHTER AUTHORIZATION REQUEST (ID = %d) SENT FOR PROCESSING ON AUTHORIZATION_ENGINE %d", pedido_other.id , engine);
+            escreverLog(message);
+
+            struct enviar_pipe aux;
+            aux.servico = pedido_other.servico;
+            aux.dados_reservar = pedido_other.dados_reservar;
+            aux.id = pedido_other.id;
+            
+            pthread_mutex_lock(&mutex_queues);
+            printf("vou mandarrrrr\n");
+            write(shrmem->authEnginePipes[engine].fd[1], &aux, sizeof(aux));
+            pthread_mutex_unlock(&mutex_queues);
+        }
+        
+    
 
         // ver se é preciso e tals e depois aumentar e tals
 
-        dequeue_other(&other_queue);
+        //dequeue_other(&other_queue);
         sleep(5);
     }
     
     pthread_exit(NULL);
     return NULL;
 }
+
+
+void authorizationEngine(int id) {
+    struct enviar_pipe aux;
+    
+    ssize_t bytesRead;
+    
+    printf("vou ler pa %d\n", id);
+    while ((bytesRead = read(shrmem->authEnginePipes[id].fd[0], &aux, sizeof(aux))) > 0) {
+        printf("Engine %d recebeu: ID %d\n", id, aux.id);
+        if (aux.servico == 0) { // registo
+            printf("Registo\n");
+            if (shrmem->n_users < N_MAX_USERS) {
+                pthread_mutex_lock(&mutex_mem);
+                shrmem->mobileUsers[shrmem->n_users].id_user = aux.id;
+                shrmem->mobileUsers[shrmem->n_users].plafondInicial = aux.dados_reservar;
+                shrmem->mobileUsers[shrmem->n_users].plafondAtual = aux.dados_reservar;
+                shrmem->mobileUsers[shrmem->n_users].pedidosAtual = 0;
+                shrmem->n_users++;
+                pthread_mutex_unlock(&mutex_mem);
+                msgQueue.sucesso = 1;
+            } else {
+                printf("Numero de utilizadores maximo atingido.\n");
+                escreverLog("Numero de utilizadores atingiu o limite. Pedido de registo removido.");
+                msgQueue.sucesso = 0;
+            }
+            msgQueue.type = aux.id;
+            msgsnd(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 0);
+            printf("envieiiiiii\n");
+
+        } else if(aux.servico == 1) { // video
+            printf("Pedido de autorização de video\n");
+        } else if (aux.servico == 2) { // music
+            printf("Pedido de autorização de music\n");
+        } else if (aux.servico == 3){
+            printf("Pedido de autorização de social\n");
+        }
+        // Processar os dados recebidos
+    }
+    printf("idfsddsf");
+
+    if (bytesRead == -1) {
+        perror("Erro na leitura do pipe");
+        escreverLog("ERROR: leitura do pipe falhou");
+    }
+
+    //close(shrmem->authEnginePipes[id].fd[0]);
+
+
+
+}
+
 
 void monitorEngine() {
     //TODO: completar
@@ -638,6 +826,7 @@ void * gerarEstatisticas(void * arg) {
     while (1) {
         pthread_mutex_lock(&mutex_mem);
         msgQueue.type = 1;
+        msgQueue.sucesso = 1;
         msgQueue.totalAuthReqsMusic = shrmem->stats->totalAuthReqsMusic;
         msgQueue.totalAuthReqsSocial = shrmem->stats->totalAuthReqsSocial;
         msgQueue.totalAuthReqsVideo = shrmem->stats->totalAuthReqsVideo;

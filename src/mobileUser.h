@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/select.h>
+#include <sys/msg.h>
 
 
 #define BUFLEN 1024
@@ -20,7 +21,7 @@
 int PLAFOND, N_PEDIDOS, INTERVALO_VIDEO, INTERVALO_MUSIC, INTERVALO_SOCIAL, DADOS_RESERVAR;
 pthread_t video_t, music_t, social_t;
 fd_set read_set;
-int fd_pipe;
+int fd_pipe, msqid;
 char message[BUFLEN];
 
 void mobile();

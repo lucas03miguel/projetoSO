@@ -36,6 +36,8 @@ typedef struct {
 int glMsqId;
 pthread_t stats_t, command_t;
 glMessageQueue msgQueue;
+int fd_pipe;
+
 //void escreverLog(char *message);
 void arranque();
 void sigint(int signum);

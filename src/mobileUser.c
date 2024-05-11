@@ -11,16 +11,25 @@
 int main(int argc, char *argv[]){
     detecaoErros(argc, argv);
 
-    printf("Esperando aprovação para registar...\n");
-    sleep(2);
 
-    if ((fd_pipe = open(USER_PIPE, O_WRONLY)) == -1) {
+    if ((fd_pipe = open(USER_PIPE, O_WRONLY)) < 0) {
         perror("Erro ao abrir o pipe\n");
         exit(-1);
     }
-
     sprintf(message, "%d#%d", getpid(), PLAFOND);
     write(fd_pipe, &message, sizeof(message));
+
+    printf("Esperando aprovação para registar...\n");
+    msqid = msgget(123, 0777);
+    if (msqid == -1) {
+        perror("Erro ao acessar a Message Queue");
+        exit(-1);
+    }
+
+    msgrcv(msqid, &message, sizeof(message), getpid(), 0);
+    printf("Recebi: %s\n", message);
+    //sleep(1);
+
 
     if (fork() == 0) {
         //escreverLog("MOBILE_USER SIMULATOR STARTING");
@@ -144,6 +153,8 @@ void mobile() {
 
 
 void * video(void *args) {
+    if ((int *)args){};
+
     printf("%d\n", getppid());
 
 
@@ -154,6 +165,8 @@ void * video(void *args) {
 
 
 void * music(void *args) {
+    if ((int *)args){};
+
     printf("%d\n", getppid());
 
 
@@ -164,6 +177,8 @@ void * music(void *args) {
 
 
 void * social(void *args) {
+    if ((int *)args){};
+    
     printf("%d\n", getppid());
 
 

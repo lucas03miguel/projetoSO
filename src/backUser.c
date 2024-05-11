@@ -13,6 +13,12 @@ int main(int argc, char const *argv[]){
     }
     arranque();
     printMenu();
+
+    if ((fd_pipe = open(PIPE, O_WRONLY)) < 0) {
+        perror("Erro ao abrir o pipe");
+        limpeza();
+        exit(-1);
+    }
     
     if (fork() == 0) {
         signal(SIGINT, sigint);
@@ -36,10 +42,10 @@ void sigint(int signum){
 void limpeza(){
     printf("\nA realizar limpeza\n");
 
-    unlink(PIPE);
-    msgctl(glMsqId, IPC_RMID, NULL);
+    close(fd_pipe);
+    //msgctl(glMsqId, IPC_RMID, NULL);
     
-    //close(fd_pipe);
+    //unlink(PIPE);
     //shmdt(shrmem);
     //shmctl(shmid, IPC_RMID, NULL);
     //fclose(logFile);
@@ -58,7 +64,12 @@ void arranque() {
     }
     */
 
-    glMsqId = msgget(123, IPC_CREAT | 0777);
+    glMsqId = msgget(123, 0777);
+    if (glMsqId == -1) {
+        perror("Erro ao acessar a Message Queue");
+        limpeza();
+        exit(-1);
+    }
 }
 
 void printMenu(){
@@ -117,9 +128,14 @@ void * stats(void * arg){
     if ((int *)arg){};
 
     while (1) {
-        printf("Recebi stats\n");
-        msgrcv(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 1, 0);
-        printf("oi\n");
+        printf("\nRecebi stats\n");
+        if (msgrcv(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 1, 0) < 0) {
+            perror("Erro ao receber mensagem");
+            limpeza();
+            exit(-1);
+        }
+        //msgrcv(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 1, 0);
+        //printf("oi\n");
         printf("Total de pedidos de autenticação de música: %d\n", msgQueue.totalAuthReqsMusic);
         printf("Total de pedidos de autenticação de social: %d\n", msgQueue.totalAuthReqsSocial);
         printf("Total de pedidos de autenticação de video: %d\n", msgQueue.totalAuthReqsVideo);

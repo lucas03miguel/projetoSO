@@ -20,17 +20,26 @@ int main(int argc, char *argv[]){
     write(fd_pipe, &message, sizeof(message));
 
     printf("Esperando aprovação para registar...\n");
+    printf("mypid: %d\n", getpid());
     msqid = msgget(123, 0777);
     if (msqid == -1) {
         perror("Erro ao acessar a Message Queue");
-        exit(-1);
+        return -1;
     }
 
 
     msgrcv(msqid, &msg, sizeof(msg), getpid(), 0);
-    printf("Recebi: %s\n", msg.sucesso ? "Sucesso" : "Falha");
+    if (msg.sucesso == 1)
+        printf("Registado com sucesso\n");
+    else if (msg.sucesso == 0){
+        printf("Falha ao registar. Número de maximo de utilizadores atingido.\n");
+        return -1;
+    } else if (msg.sucesso == -1) {
+        printf("Falha ao registar. Tempo maximo de processamento atingido.\n");
+        return -1;
+    }
 
-    while(1);
+    //while(1);
     //sleep(1);
 
 
@@ -138,6 +147,7 @@ void mobile() {
     pthread_create(&video_t, NULL, video, NULL);
     pthread_create(&music_t, NULL, music, NULL);
     pthread_create(&social_t, NULL, social, NULL);
+
 
 
     pthread_join(video_t, NULL);

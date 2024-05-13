@@ -54,8 +54,9 @@ typedef struct {
     Stats *stats;
     AuthorizationEnginePipes *authEnginePipes;
 
-    pthread_mutex_t mutex_mem, mutex_log, mutex_engine_free, mutex_more_engines;
+    pthread_mutex_t mutex_mem, mutex_log, mutex_engine_free, mutex_more_engines; //, mutex;
     pthread_cond_t cond_engine_free, cond_more_engines;
+    //int queueFullSignal, engineExtra, queueHalfEmptySignal;
 } MemStruct;
 
 typedef struct {
@@ -110,10 +111,10 @@ glMessageQueue msgQueue;
 Node_video *video_queue;
 Node_other *other_queue;
 pthread_t receiver_t, sender_t, stats_t, alert_t;
-pthread_mutex_t mutex_queues = PTHREAD_MUTEX_INITIALIZER, mutex_auth_request = PTHREAD_MUTEX_INITIALIZER, mutex_auth_engine = PTHREAD_MUTEX_INITIALIZER, mutex_monitor = PTHREAD_MUTEX_INITIALIZER, mutex_log = PTHREAD_MUTEX_INITIALIZER, mutex_stats = PTHREAD_MUTEX_INITIALIZER, mutex_alert = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_queues = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-sem_t *sem_monitor, *sem_auth_engine, *sem_auth_request, *sem_sys_manager;
 FILE *logFile, *f;
+//sem_t *sem_monitor, *sem_auth_engine, *sem_auth_request, *sem_sys_manager;
 
 void arranque(char *filename);
 void terminar();

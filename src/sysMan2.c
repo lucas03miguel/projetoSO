@@ -35,13 +35,14 @@ void arranque(char *argv){
         limpeza();
         exit(-1);
     }
+    escreverLog("5G_AUTH_PLATFORM SIMULATOR STARTING");
 
     f = fopen(filename, "r");
     if (f == NULL) {
         sprintf(message, "Erro ao abrir o ficheiro %s", argv);
         perror(message);
         sprintf(message, "ERROR ao abrir o ficheiro %s", argv);
-        //escreverLog(message);
+        escreverLog(message);
         fclose(logFile);
         exit(-1);
     }
@@ -51,7 +52,7 @@ void arranque(char *argv){
     if(fileSize == 0){
         printf("Erro: o %s ficheiro está vazio.\n", argv);
         sprintf(message, "ERROR: o ficheiro %s está vazio", argv);
-        //escreverLog(message);
+        escreverLog(message);
         limpeza();
         exit(-1);
     }
@@ -73,7 +74,7 @@ void arranque(char *argv){
     N_MAX_USERS = atoi(linhas[0]);
     if (N_MAX_USERS < 1){
         printf("Erro: o número de utilizadores tem de ser maior que 0 e inteiro.\n");
-        //escreverLog("ERROR: número de utilizadores inválido");
+        escreverLog("ERROR: número de utilizadores inválido");
         limpeza();
         exit(-1);
     }
@@ -81,7 +82,7 @@ void arranque(char *argv){
     N_SLOTS = atoi(linhas[1]);
     if (N_SLOTS < 0){
         printf("Erro: o número de slots nas filas tem de ser maior ou igual que 0 e inteiro.\n");
-        //escreverLog("ERROR: número de slots inválido");
+        escreverLog("ERROR: número de slots inválido");
         limpeza();
         exit(-1);
     }
@@ -89,7 +90,7 @@ void arranque(char *argv){
     AUTH_SERVERS_INIT = atoi(linhas[2]);
     if (AUTH_SERVERS_INIT < 1){
         printf("Erro: o número de Authorization Engines tem de ser maior ou igual que 1 e inteiro.\n");
-        //escreverLog("ERROR: número de Authorization Engines inválido");
+        escreverLog("ERROR: número de Authorization Engines inválido");
         limpeza();
         exit(-1);
     }
@@ -97,7 +98,7 @@ void arranque(char *argv){
     AUTH_PROC_TIME = atoi(linhas[3]);
     if (AUTH_PROC_TIME < 0){
         printf("Erro: o tempo de processamento dos Authorization Engine é inválido e inteiro.\n");
-        //escreverLog("ERROR: tempo de processamento dos Authorization Engine inválido");
+        escreverLog("ERROR: tempo de processamento dos Authorization Engine inválido");
         limpeza();
         exit(-1);
     }
@@ -105,31 +106,31 @@ void arranque(char *argv){
     MAX_VIDEO_WAIT = atoi(linhas[4]);
     if (MAX_VIDEO_WAIT < 1){
         printf("Erro: o tempo que os pedidos de autorização do serviço de vídeo podem aguardar tem de ser maior ou igual que 1 e inteiro.\n");
-        //escreverLog("ERROR: tempo que os pedidos de autorização do serviço de vídeo podem aguardar inválido");
+        escreverLog("ERROR: tempo que os pedidos de autorização do serviço de vídeo podem aguardar inválido");
         limpeza();
         exit(-1);
     }
-   
+
     MAX_OTHERS_WAIT = atoi(linhas[5]);
     if (MAX_OTHERS_WAIT < 1){
         printf("Erro: o tempo que os outros pedidos de autorização podem aguardar tem de ser maior ou igual que 1 e inteiro.\n");
-        //escreverLog("ERROR: tempo que os outros pedidos de autorização podem aguardar inválido");
+        escreverLog("ERROR: tempo que os outros pedidos de autorização podem aguardar inválido");
         limpeza();
         exit(-1);
     }
-    
-    int size = N_MAX_USERS * sizeof(MobileUser) + sizeof(Stats) + (AUTH_SERVERS_INIT + 1) * sizeof(AuthorizationEnginePipes) + sizeof(MemStruct); 
+
+    int size = N_MAX_USERS * sizeof(MobileUser) + sizeof(Stats) + AUTH_SERVERS_INIT * sizeof(AuthorizationEnginePipes) + sizeof(MemStruct); 
     shmid = shmget(IPC_PRIVATE, size, IPC_CREAT | 0777);
     if (shmid == -1) {
         perror("Erro ao criar a memória partilhada");
-        //escreverLog("ERROR: não foi possível criar a memória partilhada");
+        escreverLog("ERROR: não foi possível criar a memória partilhada");
         limpeza();
         exit(-1);
     }
     shrmem = (MemStruct *) shmat(shmid, NULL, 0);
     if (shrmem == (MemStruct *) -1) {
         perror("Erro ao aceder à memória partilhada");
-        //escreverLog("ERROR: não foi possível aceder à memória partilhada");
+        escreverLog("ERROR: não foi possível aceder à memória partilhada");
         limpeza();
         exit(-1);
     }
@@ -137,7 +138,7 @@ void arranque(char *argv){
     void *base = (void *)shrmem;
     shrmem->mobileUsers = (MobileUser *)(base + sizeof(MemStruct));
     shrmem->stats = (Stats *)(shrmem->mobileUsers + N_MAX_USERS);
-    shrmem->authEnginePipes = (AuthorizationEnginePipes *)(shrmem->stats + 1); //+1 porque é so um stat
+    shrmem->authEnginePipes = (AuthorizationEnginePipes *)(shrmem->stats + 1);
     shrmem->n_users = 0;
     shrmem->stats->totalDataVideo = 0;
     shrmem->stats->totalAuthReqsVideo = 0;
@@ -146,7 +147,6 @@ void arranque(char *argv){
     shrmem->stats->totalDataSocial = 0;
     shrmem->stats->totalAuthReqsSocial = 0;
 
-    
     pthread_mutexattr_t attr;
     pthread_mutexattr_init(&attr);
     pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
@@ -156,39 +156,6 @@ void arranque(char *argv){
     pthread_mutexattr_init(&attr2);
     pthread_mutexattr_setpshared(&attr2, PTHREAD_PROCESS_SHARED);
     pthread_mutex_init(&shrmem->mutex_log, &attr2);
-
-    pthread_mutexattr_t attr3;
-    pthread_mutexattr_init(&attr3);
-    pthread_mutexattr_setpshared(&attr3, PTHREAD_PROCESS_SHARED);
-    pthread_mutex_init(&shrmem->mutex_engine_free, &attr3);
-
-    /*
-    pthread_mutexattr_t attr4;
-    pthread_mutexattr_init(&attr4);
-    pthread_mutexattr_setpshared(&attr4, PTHREAD_PROCESS_SHARED);
-    pthread_mutex_init(&shrmem->mutex_more_engines, &attr4);
-    */
-
-    /*
-    pthread_mutexattr_t attr5;
-    pthread_mutexattr_init(&attr5);
-    pthread_mutexattr_setpshared(&attr5, PTHREAD_PROCESS_SHARED);
-    pthread_mutex_init(&mutex_queues, &attr5);
-    */
-
-
-    pthread_condattr_t attr5;
-    pthread_condattr_init(&attr5);
-    pthread_condattr_setpshared(&attr5, PTHREAD_PROCESS_SHARED);
-    pthread_cond_init(&shrmem->cond_engine_free, &attr5);
-
-    pthread_condattr_t attr6;
-    pthread_condattr_init(&attr6);
-    pthread_condattr_setpshared(&attr5, PTHREAD_PROCESS_SHARED);
-    pthread_cond_init(&shrmem->cond_more_engines, &attr6);
-
-    escreverLog("5G_AUTH_PLATFORM SIMULATOR STARTING");
-
 
     glMsqId = msgget(123, IPC_CREAT | 0777);
     printf("id: %d\n", glMsqId);
@@ -246,16 +213,32 @@ void terminar() {
 
 void limpeza(){
     printf("\nA realizar limpeza\n");
-    escreverLog("5G_AUTH_PLATFORM SIMULATOR CLOSING");
-    
 
     pthread_cond_destroy(&cond);
-    pthread_cond_destroy(&shrmem->cond_more_engines);
-    pthread_cond_destroy(&shrmem->cond_engine_free);
+    pthread_cond_destroy(&cond_more_engines);
+    pthread_cond_destroy(&cond_engine_free);
     pthread_mutex_destroy(&shrmem->mutex_mem);
     pthread_mutex_destroy(&mutex_queues);
-    //pthread_mutex_destroy(&shrmem->mutex_more_engines);
-    pthread_mutex_destroy(&shrmem->mutex_engine_free);
+    pthread_mutex_destroy(&mutex_more_engines);
+    pthread_mutex_destroy(&mutex_engine_free);
+
+    /*
+    for (int i = 0; i < AUTH_SERVERS_INIT; i++) {
+        pthread_mutex_lock(&mutex_mem);
+        //printf("%d\n", shrmem->authEnginePipes[i].fd[1]);
+        //close(shrmem->authEnginePipes[i].fd[0]);
+        printf("teste\n");
+        close(shrmem->authEnginePipes[i].fd[1]);
+        pthread_mutex_unlock(&mutex_mem);
+        //printf("oiiiii\n");
+        //printf("oiiii\n");
+        //printf("%d %d\n", fd_pipes_auth[i][0], fd_pipes_auth[i][1]);
+        //printf("oii\n");
+        //free(shrmem->authEnginePipes[i]);
+        //printf("oi\n");
+    }
+    //free(fd_pipes_auth);
+    */
 
 
     destroy_other_queue(&other_queue);
@@ -270,7 +253,8 @@ void limpeza(){
     shmdt(shrmem);
     shmctl(shmid, IPC_RMID, NULL);
 
-    
+
+    escreverLog("5G_AUTH_PLATFORM SIMULATOR CLOSING");
     fclose(f);
     fclose(logFile);
     printf("Limpeza realizada. Saindo...\n");
@@ -291,25 +275,6 @@ void escreverLog(char *message){
     pthread_mutex_unlock(&shrmem->mutex_log);
 }
 
-int countOccupiedSlots(int tipo) {
-    int count = 0;
-    if (tipo == 0) {
-        Node_other *aux = other_queue;
-        while (aux != NULL) {
-            count++;
-            aux = aux->next;
-        }
-    } else {
-        Node_video *aux = video_queue;
-        while (aux != NULL) {
-            count++;
-            aux = aux->next;
-        }
-    }
-    return count;
-
-}
-
 void enqueue_other(Node_other **head, Other_Services_Queue other) {
     Node_other *newNode = malloc(sizeof(Node_other));
     if (newNode == NULL) {
@@ -318,19 +283,16 @@ void enqueue_other(Node_other **head, Other_Services_Queue other) {
         return;
     }
 
-    int count = countOccupiedSlots(0);
-
-    printf("countttt: %d\n", count);
+    int count = 0;
+    Node_other *aux = *head;
+    while (aux != NULL) {
+        count++;
+        aux = aux->next;
+    }
+    printf("count: %d\n", count);
     if (count >= N_SLOTS) {
         printf("Erro: Fila de outros serviços está cheia. Eliminando pedido...\n");
-        escreverLog("ERROR: nao foi possivel escrever na fila de outros servicos.");
-        
-        /*
-        pthread_mutex_lock(&shrmem->mutex_more_engines);
-        engineExtra = 1;
-        pthread_cond_signal(&shrmem->cond_more_engines);
-        pthread_mutex_unlock(&shrmem->mutex_more_engines);
-        */
+        escreverLog("ERROR: nao foi possivel escrever na fila de outros servicoes.");
         return;
     }
 
@@ -356,17 +318,6 @@ Other_Services_Queue dequeue_other(Node_other **head) {
     Other_Services_Queue item = temp->osq;
     *head = (*head)->next;
     free(temp);
-
-    /*
-    int count = countOccupiedSlots(0);
-    printf("count: %d\n", count);
-    if ((count < (N_SLOTS * 0.5)) && (engineExtra == 1)) {
-        pthread_mutex_lock(&shrmem->mutex_more_engines);
-        pthread_cond_signal(&shrmem->cond_more_engines);
-        pthread_mutex_unlock(&shrmem->mutex_more_engines);
-    }
-    */
-
     return item;
 }
 
@@ -396,20 +347,17 @@ void enqueue_video(Node_video **head, Video_Streaming_Queue video) {
         return;
     }
 
+    int count = 0;
+    Node_video *aux = *head;
+    while (aux != NULL) {
+        count++;
+        aux = aux->next;
+    }
 
-    int count = countOccupiedSlots(1);
-    printf("count: %d\n", count);
     // Verificar se a fila já está cheia
     if (count >= N_SLOTS) {
-        printf("Erro: Fila de outros serviços está cheia. Eliminando pedido...\n");
-        escreverLog("ERROR: nao foi possivel escrever na fila de outros servicos.");
-        
-        /*
-        pthread_mutex_lock(&shrmem->mutex_more_engines);
-        engineExtra = 1;
-        pthread_cond_signal(&shrmem->cond_more_engines);
-        pthread_mutex_unlock(&shrmem->mutex_more_engines);
-        */
+        printf("A fila de vídeo está cheia.\n");
+        escreverLog("Tentativa de enfileirar em uma fila cheia (vídeo).");
         return;
     }
 
@@ -421,7 +369,6 @@ void enqueue_video(Node_video **head, Video_Streaming_Queue video) {
         *head = newNode;
         return;
     } 
-
     Node_video *current = *head;
     while (current->next != NULL)
         current = current->next;
@@ -436,16 +383,6 @@ Video_Streaming_Queue dequeue_video(Node_video **head) {
     Video_Streaming_Queue item = temp->vsq;
     *head = (*head)->next;
     free(temp);
-
-        /*
-    int count = countOccupiedSlots(1);
-    printf("count: %d\n", count);
-    if ((count < (N_SLOTS * 0.5)) && (engineExtra == 1)) {
-        pthread_mutex_lock(&shrmem->mutex_more_engines);
-        pthread_cond_signal(&shrmem->cond_more_engines);
-        pthread_mutex_unlock(&shrmem->mutex_more_engines);
-    }
-        */
     return item;
 }
 
@@ -464,42 +401,6 @@ void destroy_video_queue(Node_video **head) {
     }
 
     *head = NULL;
-}
-
-void criar_authEngine(int id) {
-    pthread_mutex_lock(&shrmem->mutex_mem);
-    printf("atao %d: %d %d\n", id, shrmem->authEnginePipes[id].fd[0], shrmem->authEnginePipes[id].fd[1]);
-    ++enginesCounter;
-    if (pipe(shrmem->authEnginePipes[id].fd) == -1) {
-        pthread_mutex_unlock(&shrmem->mutex_mem);
-        printf("atao2 %d: %d %d\n", id, shrmem->authEnginePipes[id].fd[0], shrmem->authEnginePipes[id].fd[1]);
-        perror("Erro ao criar o pipe");
-        escreverLog("ERROR: nao foi possivel criar o pipe");
-        limpeza();
-        exit(-1);
-    }
-    printf("criei aí o pipe e tals %d %d\n", shrmem->authEnginePipes[id].fd[0], shrmem->authEnginePipes[id].fd[1]);
-    pthread_mutex_unlock(&shrmem->mutex_mem);
-
-    printf("criei aí o pipe e tals\n");
-    //printf("opa vamos testar: %d %d\n", fd_pipes_auth[i][0], fd_pipes_auth[i][1]);
-    if (fork() == 0) {
-        pthread_mutex_lock(&shrmem->mutex_mem);
-        shrmem->authEnginePipes[id].pid = getpid();
-        shrmem->authEnginePipes[id].disponivel = 1;
-        close(shrmem->authEnginePipes[id].fd[1]);
-        pthread_mutex_unlock(&shrmem->mutex_mem);
-
-        sprintf(message, "AUTHORIZATION_ENGINE %d STARTING", id + 1);
-        escreverLog(message);
-        authorizationEngine(id);
-        exit(0);
-    } else {
-        pthread_mutex_lock(&shrmem->mutex_mem);
-        close(shrmem->authEnginePipes[id].fd[0]);
-        pthread_mutex_unlock(&shrmem->mutex_mem);
-    
-    }
 }
 
 void authorizationRequestManager() {
@@ -557,9 +458,41 @@ void authorizationRequestManager() {
             limpeza();
             exit(-1);
         }*/
-        criar_authEngine(i);
-    }
+        pthread_mutex_lock(&shrmem->mutex_mem);
+        printf("atao %d: %d %d\n", i, shrmem->authEnginePipes[i].fd[0], shrmem->authEnginePipes[i].fd[1]);
+        ++enginesCounter;
+        ++enginesAvailable;
+        if (pipe(shrmem->authEnginePipes[i].fd) == -1) {
+            pthread_mutex_unlock(&shrmem->mutex_mem);
+            printf("atao2 %d: %d %d\n", i, shrmem->authEnginePipes[i].fd[0], shrmem->authEnginePipes[i].fd[1]);
+            perror("Erro ao criar o pipe");
+            escreverLog("ERROR: nao foi possivel criar o pipe");
+            limpeza();
+            exit(-1);
+        }
+        printf("criei aí o pipe e tals %d %d\n", shrmem->authEnginePipes[i].fd[0], shrmem->authEnginePipes[i].fd[1]);
+        pthread_mutex_unlock(&shrmem->mutex_mem);
 
+        printf("criei aí o pipe e tals\n");
+        //printf("opa vamos testar: %d %d\n", fd_pipes_auth[i][0], fd_pipes_auth[i][1]);
+        if (fork() == 0) {
+            pthread_mutex_lock(&shrmem->mutex_mem);
+            shrmem->authEnginePipes[i].pid = getpid();
+            shrmem->authEnginePipes[i].disponivel = 1;
+            close(shrmem->authEnginePipes[i].fd[1]);
+            pthread_mutex_unlock(&shrmem->mutex_mem);
+
+            sprintf(message, "AUTHORIZATION_ENGINE %d STARTING", i + 1);
+            escreverLog(message);
+            authorizationEngine(i);
+            exit(0);
+        } else {
+            pthread_mutex_lock(&shrmem->mutex_mem);
+            close(shrmem->authEnginePipes[i].fd[0]);
+            pthread_mutex_unlock(&shrmem->mutex_mem);
+        
+        }
+    }
     for (int i = 0; i < AUTH_SERVERS_INIT; i++) {
         wait(NULL);
     }
@@ -569,32 +502,15 @@ void authorizationRequestManager() {
     // meter loop com variavel e tals
     /*
     while (1) {
-        pthread_mutex_lock(&shrmem->mutex_more_engines);
-        pthread_cond_wait(&shrmem->cond_more_engines, &shrmem->mutex_more_engines);
-        pthread_mutex_unlock(&shrmem->mutex_more_engines);
+        pthread_mutex_lock(&mutex_more_engines);
+        while (coiso e tals 1) {
+            pthread_cond_wait(&cond_more_engines, &mutex_more_engines);
+        }
+        pthread_mutex_unlock(&mutex_more_engines);
         
-        //printf("atao %d: %d %d\n", i, shrmem->authEnginePipes[i].fd[0], shrmem->authEnginePipes[i].fd[1]);
-        printf("ai meno\n");
-        int id = enginesCounter - 1;
-        criar_authEngine(id);
 
-        pthread_mutex_lock(&shrmem->mutex_more_engines);
-        pthread_cond_wait(&shrmem->cond_more_engines, &shrmem->mutex_more_engines);
-        pthread_mutex_unlock(&shrmem->mutex_more_engines);
 
-        pthread_mutex_lock(&shrmem->mutex_mem);
-        kill(shrmem->authEnginePipes[id].pid, SIGTERM); 
-        close(shrmem->authEnginePipes[id].fd[0]);
-        close(shrmem->authEnginePipes[id].fd[1]);
-        --enginesCounter;
-        engineExtra = 0;
-        pthread_mutex_unlock(&shrmem->mutex_mem);
 
-        //pthread_mutex_lock(&shrmem->mutex_more_engines);
-        //while ((countQueues(0) > N_SLOTS * 0.5) && (countQueues(1) > N_SLOTS * 0.5)) {
-        //    pthread_cond_wait(&shrmem->cond_more_engines, &shrmem->mutex_more_engines);
-        //}
-        //pthread_mutex_unlock(&shrmem->mutex_more_engines);
     }
     */
 
@@ -652,7 +568,6 @@ void * receiver(void *arg) {
 
                 int quant_hash = countChar(buffer, '#');
                 printf("hashtagggg: %d\n", quant_hash);
-
                 //mensagem de registo
                 if (quant_hash == 1) {
                     int id = atoi(strtok(buffer, "#"));
@@ -716,39 +631,14 @@ void * receiver(void *arg) {
 
                     printf("%d %d", pedido, id);
 
-                    if (strcmp(servico, "VIDEO") == 0) {
-                        Video_Streaming_Queue video;
-                        video.id = id;
-                        video.dados_reservar = pedido;
 
-                        pthread_mutex_lock(&mutex_queues);
-                        enqueue_video(&video_queue, video);
-                        pthread_cond_signal(&cond);
-                        pthread_mutex_unlock(&mutex_queues);
+                } 
 
-                    } else if (strcmp(servico, "MUSIC") == 0) {
-                        Other_Services_Queue other;
-                        other.id = id;
-                        other.servico = 1;
-                        other.dados_reservar = pedido;
+                
+                
 
-                        pthread_mutex_lock(&mutex_queues);
-                        enqueue_other(&other_queue, other);
-                        pthread_cond_signal(&cond);
-                        pthread_mutex_unlock(&mutex_queues);
 
-                    } else if (strcmp(servico, "SOCIAL") == 0) {
-                        Other_Services_Queue other;
-                        other.id = id;
-                        other.servico = 2;
-                        other.dados_reservar = pedido;
-
-                        pthread_mutex_lock(&mutex_queues);
-                        enqueue_other(&other_queue, other);
-                        pthread_cond_signal(&cond);
-                        pthread_mutex_unlock(&mutex_queues);
-                    } 
-                }   
+                
             }
         }
     }
@@ -825,11 +715,8 @@ void * sender(void *arg) {
         //int tipo_pedido = -1;
         struct enviar_pipe aux;
         pthread_mutex_lock(&mutex_queues);
-        if (video_queue != NULL) { // video
+        if (video_queue != NULL) {
             Video_Streaming_Queue pedido_video = dequeue_video(&video_queue);
-            //enqueue_video(&video_queue, pedido_video);
-            //pthread_mutex_unlock(&mutex_queues);
-
             aux.servico = 3;
             aux.dados_reservar = pedido_video.dados_reservar;
             aux.id = pedido_video.id;
@@ -839,22 +726,17 @@ void * sender(void *arg) {
                 pthread_mutex_unlock(&mutex_queues);
                 continue;
             }
-        } else { // other
+        } else {
             Other_Services_Queue pedido_other = dequeue_other(&other_queue);
-            //enqueue_other(&other_queue, pedido_other);
-
             aux.servico = pedido_other.servico;
             aux.dados_reservar = pedido_other.dados_reservar;
             aux.id = pedido_other.id;
-
             //tipo_pedido = 0;
             if(verificar_tempo_other(pedido_other)){
                 pthread_mutex_unlock(&mutex_queues);
-                if (aux.servico == 0) {
-                    msgQueue.sucesso = -1;
-                    msgQueue.type = aux.id;
-                    msgsnd(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 0);
-                }
+                msgQueue.sucesso = -1;
+                msgQueue.type = aux.id;
+                msgsnd(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 0);
                 continue;
             }
             
@@ -866,11 +748,11 @@ void * sender(void *arg) {
         int engine = pesquisa_engine_disponivel();
         if (engine == -1) {
             printf("Não há engines disponíveis. À espera que algum fique livre\n");
-            pthread_mutex_lock(&shrmem->mutex_engine_free);
+            pthread_mutex_lock(&mutex_engine_free);
             while ((engine = pesquisa_engine_disponivel()) == -1) {
-                pthread_cond_wait(&shrmem->cond_engine_free, &shrmem->mutex_engine_free);
+                pthread_cond_wait(&cond_engine_free, &mutex_engine_free);
             }
-            pthread_mutex_unlock(&shrmem->mutex_engine_free);
+            pthread_mutex_unlock(&mutex_engine_free);
             printf("Já há engines disponíveis %d\n", engine);
         }
         printf("vou mandar para o engine %d\n", engine);
@@ -942,7 +824,6 @@ void authorizationEngine(int id) {
         if (aux.servico == 0) { // registo
             printf("Registo\n");
             pthread_mutex_lock(&shrmem->mutex_mem);
-            printf("atao\n");
             if (shrmem->n_users < N_MAX_USERS) {
                 shrmem->mobileUsers[shrmem->n_users].id_user = aux.id;
                 shrmem->mobileUsers[shrmem->n_users].plafondInicial = aux.dados_reservar;
@@ -1006,17 +887,12 @@ void authorizationEngine(int id) {
         //printf("esdtou preso\n");
         //printf("disponviel %d\n", shrmem->authEnginePipes[id].disponivel);
         pthread_mutex_lock(&shrmem->mutex_mem);
-        
-        pthread_mutex_lock(&shrmem->mutex_engine_free);
         shrmem->authEnginePipes[id].disponivel = 1;
-        pthread_cond_signal(&shrmem->cond_engine_free);
-        pthread_mutex_unlock(&shrmem->mutex_engine_free);
-
         pthread_mutex_unlock(&shrmem->mutex_mem);
         
         printf("vou voltarrr\n");
     }
-    printf("adeussss\n");
+    printf("idfsddsf %ld\n", bytesRead);
 
     /*
     if (bytesRead == -1) {

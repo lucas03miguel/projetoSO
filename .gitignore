@@ -4,3 +4,4 @@
 *.zip
 *.pdf
 /files/*.strace
+limpar_recursos

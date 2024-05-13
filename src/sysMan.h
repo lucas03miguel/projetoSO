@@ -54,8 +54,8 @@ typedef struct {
     Stats *stats;
     AuthorizationEnginePipes *authEnginePipes;
 
-    pthread_mutex_t mutex_mem;
-    pthread_mutex_t mutex_log;
+    pthread_mutex_t mutex_mem, mutex_log, mutex_engine_free, mutex_more_engines;
+    pthread_cond_t cond_engine_free, cond_more_engines;
 } MemStruct;
 
 typedef struct {
@@ -102,7 +102,7 @@ struct enviar_pipe {
 
 char message[BUFLEN];
 int N_MAX_USERS, N_SLOTS, AUTH_SERVERS_INIT, AUTH_PROC_TIME, MAX_VIDEO_WAIT, MAX_OTHERS_WAIT;
-int shmid, fd_back_pipe, fd_user_pipe, glMsqId, enginesCounter = 0, enginesAvailable = 0;
+int shmid, fd_back_pipe, fd_user_pipe, glMsqId, enginesCounter = 0, engineExtra = 0;
 fd_set read_set;
 pid_t pid_principal;
 MemStruct *shrmem;
@@ -110,8 +110,8 @@ glMessageQueue msgQueue;
 Node_video *video_queue;
 Node_other *other_queue;
 pthread_t receiver_t, sender_t, stats_t, alert_t;
-pthread_mutex_t mutex_queues = PTHREAD_MUTEX_INITIALIZER, mutex_more_engines = PTHREAD_MUTEX_INITIALIZER, mutex_engine_free = PTHREAD_MUTEX_INITIALIZER, mutex_auth_request = PTHREAD_MUTEX_INITIALIZER, mutex_auth_engine = PTHREAD_MUTEX_INITIALIZER, mutex_monitor = PTHREAD_MUTEX_INITIALIZER, mutex_log = PTHREAD_MUTEX_INITIALIZER, mutex_stats = PTHREAD_MUTEX_INITIALIZER, mutex_alert = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t cond = PTHREAD_COND_INITIALIZER, cond_more_engines = PTHREAD_COND_INITIALIZER, cond_engine_free = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t mutex_queues = PTHREAD_MUTEX_INITIALIZER, mutex_auth_request = PTHREAD_MUTEX_INITIALIZER, mutex_auth_engine = PTHREAD_MUTEX_INITIALIZER, mutex_monitor = PTHREAD_MUTEX_INITIALIZER, mutex_log = PTHREAD_MUTEX_INITIALIZER, mutex_stats = PTHREAD_MUTEX_INITIALIZER, mutex_alert = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 sem_t *sem_monitor, *sem_auth_engine, *sem_auth_request, *sem_sys_manager;
 FILE *logFile, *f;
 

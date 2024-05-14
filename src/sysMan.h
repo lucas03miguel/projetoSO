@@ -62,7 +62,7 @@ typedef struct {
     pthread_mutex_t mutex_mem, mutex_log, mutex_engine_free, mutex_more_engines; //, mutex;
     pthread_cond_t cond_engine_free, cond_more_engines;
     sem_t *sem_alerts;
-    //int queueFullSignal, engineExtra, queueHalfEmptySignal;
+    
 } MemStruct;
 
 typedef struct {
@@ -122,10 +122,9 @@ pthread_t receiver_t, sender_t, stats_t, alert_t;
 pthread_mutex_t mutex_queues = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 FILE *logFile, *f;
-//sem_t *sem_monitor, *sem_auth_engine, *sem_auth_request, *sem_sys_manager;
+
 
 void arranque(char *filename);
-void terminar();
 void limpeza();
 void sigint(int signum);
 void escreverLog(char *message);

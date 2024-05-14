@@ -3,11 +3,6 @@
 
 #include "mobileUser.h"
 
-
-
-//FILE *logFile;
-
-
 int main(int argc, char *argv[]){
     pid_principal = getpid();
     signal(SIGINT, sigint);
@@ -159,6 +154,8 @@ void * video(void *args) {
 
     int id = getppid();
     while (1) {
+        printf("VIDEO REQUEST\n");
+
         pthread_mutex_lock(&mutex);
         --N_PEDIDOS;
 
@@ -182,6 +179,8 @@ void * music(void *args) {
 
     int id = getppid();
     while (1) {
+        printf("MUSIC REQUEST\n");
+
         pthread_mutex_lock(&mutex);
         --N_PEDIDOS;
         
@@ -205,6 +204,8 @@ void * social(void *args) {
     
     int id = getppid();
     while (1) {
+        printf("SOCIAL REQUEST\n");
+
         pthread_mutex_lock(&mutex);
         --N_PEDIDOS;
 
@@ -217,7 +218,6 @@ void * social(void *args) {
 
         sleep(INTERVALO_SOCIAL);
     }   
-
 
     pthread_exit(NULL);
     return NULL;
@@ -233,7 +233,10 @@ void * alertas(void *args) {
             printf("\n-----------ALERTA----------\n80%% atingido\n---------------------------\n");
         else if (msg.sucesso == 3)
             printf("\n-----------ALERTA----------\n90%% atingido\n---------------------------\n");
-        else if (msg.sucesso == 4)
-            printf("\n-----------ALERTA----------\n100%% atingido---------------------------\n\n");
+        else if (msg.sucesso == 4) {
+            printf("\n-----------ALERTA----------\n100%% atingido\n---------------------------\n\n");
+            printf("A terminar o programa\n");
+            sigint(2);
+        }
     }
 }

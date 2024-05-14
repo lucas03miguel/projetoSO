@@ -3,9 +3,6 @@
 
 #include "backUser.h"
 
-//FILE *logFile;
-
-
 int main(int argc, char const *argv[]){
     if (argc != 1 && argv != NULL) {
         printf("Numero de parametros errado\n./backoffice_user\n");
@@ -60,15 +57,6 @@ void limpeza(){
 }
 
 void arranque() {
-    /*
-    if (mkfifo(PIPE, O_CREAT | O_EXCL | 0600) == -1) {
-        perror("Erro ao criar o pipe");
-        //escreverLog("ERROR: não foi possível criar o pipe BACK_PIPE");
-        limpeza();
-        exit(-1);
-    }
-    */
-
     sem = sem_open(SEM_NAME, O_CREAT | O_EXCL, 0777, 1);
     if (sem == SEM_FAILED) {
         printf("Só pode ter um backoffice a correr de cada vez\n");
@@ -88,7 +76,6 @@ void printMenu(){
 	printf("1#data_stats - Apresentar estatísticas\n");
 	printf("1#reset - Limpar todas as estatísticas\n");
     printf("----------------------\n");
-    //logFile = fopen("../files/log.txt", "a");
 }
 
 int countChar(const char *str, char ch) {
@@ -103,44 +90,46 @@ int countChar(const char *str, char ch) {
 
 void gerarComandos(char *comando, char *token) {
     printf("> ");
-    fgets(comando, BUFLEN, stdin);
-    comando[strlen(comando) - 1] = '\0';
+    if (fgets(comando, BUFLEN, stdin) == NULL) {
+        perror("Erro ao ler o comando");
+        strcpy(comando, "erro");
+        return;
+    }
+
+    size_t len = strlen(comando);
+    if (len > 0 && comando[len - 1] == '\n') {
+        comando[len - 1] = '\0';
+    }
 
     if (countChar(comando, '#') != 1) {
         strcpy(comando, "erro");
         return;
     }
-    strtok(comando, "#");
-    strcpy(token, comando);
-    strcpy(comando, strtok(NULL, "#"));
-}
 
-/*
-void escreverLog(char *message){
-    time_t currentTime;
-    struct tm *localTime;
+    char *temp = strtok(comando, "#");
+    if (temp == NULL) {
+        strcpy(comando, "erro");
+        return;
+    }
+    strcpy(token, temp);
 
-    time(&currentTime);
-    localTime = localtime(&currentTime);
-    fprintf(logFile, "%02d:%02d:%02d %s\n", localTime->tm_hour, localTime->tm_min, localTime->tm_sec, message);
-    
-    fflush(stdout);
-    fflush(logFile);
+    temp = strtok(NULL, "#");
+    if (temp == NULL) {
+        strcpy(comando, "erro");
+        return;
+    }
+    strcpy(comando, temp);
 }
-*/
 
 void backoffice(){
-    //TODO: Implementar
     if (pthread_create(&stats_t, NULL, stats, NULL) != 0) {
         perror("Erro ao criar a thread stats");
-        //escreverLog("ERROR: não foi possível criar a thread stats");
         limpeza();
         exit(-1);
     }
 
     if (pthread_create(&command_t, NULL, command, NULL) != 0) {
         perror("Erro ao criar a thread stats");
-        //escreverLog("ERROR: não foi possível criar a thread stats");
         limpeza();
         exit(-1);
     }
@@ -153,22 +142,21 @@ void * stats(void * arg){
     if ((int *)arg){};
 
     while (1) {
-        printf("\nVou receber stats\n");
         if (msgrcv(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 1, 0) < 0) {
             perror("Erro ao receber mensagem");
             limpeza();
             exit(-1);
         }
-        //msgrcv(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 1, 0);
-        //printf("oi\n");
-        printf("\nTotal de pedidos de autenticação: %d\n", msgQueue.totalAuthReqs);
+
+        printf("\n-----------------------------------\n");
+        printf("Total de pedidos de autenticação: %d\n", msgQueue.totalAuthReqs);
         printf("Total de pedidos de autenticação de música: %d\n", msgQueue.totalAuthReqsMusic);
         printf("Total de pedidos de autenticação de social: %d\n", msgQueue.totalAuthReqsSocial);
         printf("Total de pedidos de autenticação de video: %d\n", msgQueue.totalAuthReqsVideo);
         printf("Total de dados de música: %d\n", msgQueue.totalDataMusic);
         printf("Total de dados de social: %d\n", msgQueue.totalDataSocial);
         printf("Total de dados de video: %d\n", msgQueue.totalDataVideo);
-
+        printf("-----------------------------------\n");
     }
     
     pthread_exit(NULL);
@@ -183,29 +171,23 @@ void * command(void * arg){
         gerarComandos(comando, token);
 
         if (strcmp(comando, "data_stats") == 0) {
-            printf("Comando certo\n");
-
-            printf("Vou enviar %s\n", comando);
             write(fd_pipe, comando, strlen(comando));
 
             msgrcv(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 2, 0);
+
             printf("Service\t%-12s\t%-10s\n", "Total data", "Auth Reqs");
             printf("%-6s\t%-12d\t%-10d\n", "VIDEO", msgQueue.totalDataVideo, msgQueue.totalAuthReqsVideo);
             printf("%-6s\t%-12d\t%-10d\n", "MUSIC", msgQueue.totalDataMusic, msgQueue.totalAuthReqsMusic);
             printf("%-6s\t%-12d\t%-10d\n", "SOCIAL", msgQueue.totalDataSocial, msgQueue.totalAuthReqsSocial);
 
-
-
         } else if (strcmp(comando, "reset") == 0) {
-            printf("Comando certo\n");
+            write(fd_pipe, comando, strlen(comando));
 
         } else {
             printf("Comando inválido\n");
             continue;
         }
     }
-
-
 
     pthread_exit(NULL);
     return NULL;

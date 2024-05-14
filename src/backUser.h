@@ -25,8 +25,8 @@
 #define SEM_NAME "/sem_bloqueante"
 
 typedef struct {
-    long type; // 1 - estatistica periodicas; 2 - estatisticas pedidas; 2 - alerta; pid - user
-    int sucesso; // 0 - falha; 1 - sucesso
+    long type; // 1 - estatistica periodicas; 2 - estatisticas pedidas; pid - user
+    int sucesso; // 0 - falha; 1 - sucesso; 2 - alerta 0.8; 3 - alerta 0.9; 4 - alerta 1
     int totalDataVideo;
     int totalAuthReqsVideo;
     int totalDataMusic;

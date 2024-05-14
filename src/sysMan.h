@@ -24,6 +24,7 @@
 #define BUFLEN 1024
 #define BACK_PIPE "/tmp/BACK_PIPE"
 #define USER_PIPE "/tmp/USER_PIPE"
+#define SEM_ALERTAS "/tmp/sem_alertas"
 
 typedef struct {
     int plafondInicial;
@@ -60,12 +61,13 @@ typedef struct {
 
     pthread_mutex_t mutex_mem, mutex_log, mutex_engine_free, mutex_more_engines; //, mutex;
     pthread_cond_t cond_engine_free, cond_more_engines;
+    sem_t *sem_alerts;
     //int queueFullSignal, engineExtra, queueHalfEmptySignal;
 } MemStruct;
 
 typedef struct {
-    long type; // 3 - estatistica; 2 - alerta; pid - user
-    int sucesso; // 0 - falha; 1 - sucesso
+    long type; // 1 - estatistica periodicas; 2 - estatisticas pedidas; pid - user
+    int sucesso; // 0 - falha; 1 - sucesso; 2 - alerta 0.8; 3 - alerta 0.9; 4 - alerta 1
     int totalDataVideo;
     int totalAuthReqsVideo;
     int totalDataMusic;

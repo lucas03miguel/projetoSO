@@ -188,6 +188,13 @@ void arranque(char *argv){
     pthread_condattr_setpshared(&attr5, PTHREAD_PROCESS_SHARED);
     pthread_cond_init(&shrmem->cond_more_engines, &attr6);
 
+    shrmem->sem_alerts = sem_open("sem", O_CREAT, 0777, 0);
+    if (shrmem->sem_alerts == SEM_FAILED) {
+        perror("Erro ao criar semáforo");
+        limpeza();
+        exit(-1);
+    }
+
     escreverLog("5G_AUTH_PLATFORM SIMULATOR STARTING");
 
 
@@ -257,6 +264,8 @@ void limpeza(){
     pthread_mutex_destroy(&mutex_queues);
     //pthread_mutex_destroy(&shrmem->mutex_more_engines);
     pthread_mutex_destroy(&shrmem->mutex_engine_free);
+    sem_close(shrmem->sem_alerts);
+	sem_unlink("sem");
 
 
     destroy_other_queue(&other_queue);
@@ -351,7 +360,7 @@ void enqueue_other(Node_other **head, Other_Services_Queue other) {
 
 Other_Services_Queue dequeue_other(Node_other **head) {
     if (*head == NULL)
-        return (Other_Services_Queue){-1, -1, -1, -1};
+        return (Other_Services_Queue){-1, "null", -1, -1};
 
     Node_other *temp = *head;
     Other_Services_Queue item = temp->osq;
@@ -431,7 +440,7 @@ void enqueue_video(Node_video **head, Video_Streaming_Queue video) {
 
 Video_Streaming_Queue dequeue_video(Node_video **head) {
     if (*head == NULL)
-        return (Video_Streaming_Queue){-1, -1, -1};
+        return (Video_Streaming_Queue){-1, "null", -1, -1};
 
     Node_video *temp = *head;
     Video_Streaming_Queue item = temp->vsq;
@@ -671,7 +680,18 @@ void * receiver(void *arg) {
                 printf("hashtagggg: %d\n", quant_hash);
 
                 //mensagem de registo
-                if (quant_hash == 1) {
+                if (quant_hash == 0) {
+                    Other_Services_Queue aux;
+                    aux.id = -1;
+                    strcpy(aux.servico, "exit");
+                    aux.dados_reservar = -1;
+
+                    pthread_mutex_lock(&mutex_queues);
+                    enqueue_other(&other_queue, aux);
+                    pthread_cond_signal(&cond);
+                    pthread_mutex_unlock(&mutex_queues);
+                    
+                } else if (quant_hash == 1) {
                     int id = atoi(strtok(buffer, "#"));
                     int plafond = atoi(strtok(NULL, "#"));
 
@@ -860,7 +880,7 @@ void * sender(void *arg) {
         } else { // other
             Other_Services_Queue pedido_other = dequeue_other(&other_queue);
             //enqueue_other(&other_queue, pedido_other);
-            printf("recebi isto %d, %d, %d\n", pedido_other.id, pedido_other.servico, pedido_other.dados_reservar);
+            printf("recebi isto %d, %s, %d\n", pedido_other.id, pedido_other.servico, pedido_other.dados_reservar);
 
             strcpy(aux.servico, pedido_other.servico);
             aux.dados_reservar = pedido_other.dados_reservar;
@@ -895,43 +915,39 @@ void * sender(void *arg) {
         printf("vou mandar para o engine %d\n", engine);
 
         
-        if (aux.servico == 3) { // video
+        if (strcmp(aux.servico, "REGISTER") == 0) { // registo
+            sprintf(message, "SENDER: REGISTRATION REQUEST (ID = %d) SENT FOR PROCESSING ON AUTHORIZATION_ENGINE %d", aux.id , engine);
+            escreverLog(message);
+
+        } else if (strcmp(aux.servico, "VIDEO") == 0) { // video
             sprintf(message, "SENDER: VIDEO AUTHORIZATION REQUEST (ID = %d) SENT FOR PROCESSING ON AUTHORIZATION_ENGINE %d", aux.id , engine);
             escreverLog(message);
 
-            //struct enviar_pipe aux;
-            //close(shrmem->authEnginePipes[engine].fd[0]);
-
-            pthread_mutex_lock(&mutex_queues);
-            write(shrmem->authEnginePipes[engine].fd[1], &aux, sizeof(aux));
-            pthread_mutex_unlock(&mutex_queues);
-
         }
-        else {
-            if (strcmp(aux.servico, "REGISTER") == 0) { // registo
-                sprintf(message, "SENDER: REGISTRATION REQUEST (ID = %d) SENT FOR PROCESSING ON AUTHORIZATION_ENGINE %d", aux.id , engine);
-                escreverLog(message);
+         else if (strcmp(aux.servico, "MUSIC") == 0) { // music
+            sprintf(message, "SENDER: MUSIC AUTHORIZATION REQUEST (ID = %d) SENT FOR PROCESSING ON AUTHORIZATION_ENGINE %d", aux.id , engine);
+            escreverLog(message);
 
-            } else if (aux.servico == 1) { // music
-                sprintf(message, "SENDER: MUSIC AUTHORIZATION REQUEST (ID = %d) SENT FOR PROCESSING ON AUTHORIZATION_ENGINE %d", aux.id , engine);
-                escreverLog(message);
+        } else if (strcmp(aux.servico, "SOCIAL") == 0) { // social
+            sprintf(message, "SENDER: SOCIAL AUTHORIZATION REQUEST (ID = %d) SENT FOR PROCESSING ON AUTHORIZATION_ENGINE %d", aux.id , engine);
+            escreverLog(message);
 
-            } else if (aux.servico == 2) { // social
-                sprintf(message, "SENDER: SOCIAL AUTHORIZATION REQUEST (ID = %d) SENT FOR PROCESSING ON AUTHORIZATION_ENGINE %d", aux.id , engine);
-                escreverLog(message);
+        } else if (strcmp(aux.servico, "STATS") == 0) { // stats
+            sprintf(message, "SENDER: STATS REQUEST (ID = %d) SENT FOR PROCESSING ON AUTHORIZATION_ENGINE %d", aux.id , engine);
+            escreverLog(message);
 
-            } else if (aux.servico == 3) { // stats
-                sprintf(message, "SENDER: STATS REQUEST (ID = %d) SENT FOR PROCESSING ON AUTHORIZATION_ENGINE %d", aux.id , engine);
-                escreverLog(message);
-            }
-            //struct enviar_pipe aux;
-            
-            
-            pthread_mutex_lock(&mutex_queues);
-            printf("vou mandarrrrr\n");
-            write(shrmem->authEnginePipes[engine].fd[1], &aux, sizeof(aux));
-            pthread_mutex_unlock(&mutex_queues);
+        } else if (strcmp(aux.servico, "exit") == 0) { // stats
+            sprintf(message, "SENDER: EXIT REQUEST (ID = %d) SENT FOR PROCESSING ON AUTHORIZATION_ENGINE %d", aux.id , engine);
+            escreverLog(message);
         }
+        //struct enviar_pipe aux;
+        
+        
+        pthread_mutex_lock(&mutex_queues);
+        printf("vou mandarrrrr\n");
+        write(shrmem->authEnginePipes[engine].fd[1], &aux, sizeof(aux));
+        pthread_mutex_unlock(&mutex_queues);
+        
         
     
 
@@ -957,11 +973,23 @@ void authorizationEngine(int id) {
         time_t processed_time = time(NULL);
         pthread_mutex_lock(&shrmem->mutex_mem);
         shrmem->authEnginePipes[id].disponivel = 0;
+        shrmem->stats->totalAuthReqs++;
         pthread_mutex_unlock(&shrmem->mutex_mem);
 
         printf("Engine %d recebeu: ID %d\n", id, aux.id);
 
-        if (aux.servico == 0) { // registo
+
+        if (strcmp(aux.servico, "exit") == 0) {
+            printf("Exittttt\n");
+            pthread_mutex_lock(&shrmem->mutex_mem);
+            shrmem->n_users--;
+            pthread_mutex_unlock(&shrmem->mutex_mem);
+
+            sprintf(message, "AUTHORIZATION_ENGINE %d: EXIT REQUEST (ID = %d) PROCESSING COMPLETED", id, aux.id);
+            escreverLog(message);
+
+
+        } else if (strcmp(aux.servico, "REGISTER") == 0) { // registo
             printf("Registo\n");
             pthread_mutex_lock(&shrmem->mutex_mem);
             printf("atao\n");
@@ -983,14 +1011,13 @@ void authorizationEngine(int id) {
                 msgQueue.sucesso = 0;
             }
             msgQueue.type = aux.id;
-            // enviar mensagem ao user para saber se deu login ou nao
-            msgsnd(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 0);
+            msgsnd(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 0); // enviar mensagem ao user para saber se deu login ou nao
             printf("envieiiiiii\n");
 
             sprintf(message, "AUTHORIZATION_ENGINE %d: REGISTRATION REQUEST (ID = %d) PROCESSING COMPLETED", id, aux.id);
             escreverLog(message);
 
-        } else if(aux.servico == 1) { // music
+        } else if(strcmp(aux.servico, "MUSIC") == 0) { // music
             printf("Pedido de autorização de musica\n");
 
             // TODO: completar
@@ -1002,7 +1029,9 @@ void authorizationEngine(int id) {
                     break;
                 }
             }
+            printf("Plafond antes: %d\n", shrmem->mobileUsers[id_user].plafondAtual);
 
+            sem_post(shrmem->sem_alerts);
             int plafond_disponivel = shrmem->mobileUsers[id_user].plafondAtual;
             shrmem->stats->totalAuthReqsMusic++;
             shrmem->mobileUsers[id_user].pedidosMusic++;
@@ -1019,11 +1048,13 @@ void authorizationEngine(int id) {
                 sprintf(message, "AUTHORIZATION_ENGINE %d: MUSIC AUTHORIZATION REQUEST (ID = %d) REFUSED", id, aux.id);
                 escreverLog(message);
             }
+
+            printf("Plafond depois: %d\n", shrmem->mobileUsers[id_user].plafondAtual);
             pthread_mutex_unlock(&shrmem->mutex_mem);
 
             
 
-        } else if (aux.servico == 2) { // social
+        } else if (strcmp(aux.servico, "SOCIAL") == 0) { // social
             printf("Pedido de autorização de social\n");
 
             int id_user = -1;
@@ -1034,7 +1065,9 @@ void authorizationEngine(int id) {
                     break;
                 }
             }
+            printf("Plafond antes: %d\n", shrmem->mobileUsers[id_user].plafondAtual);
 
+            sem_post(shrmem->sem_alerts);
             int plafond_disponivel = shrmem->mobileUsers[id_user].plafondAtual;
             shrmem->stats->totalAuthReqsSocial++;
             shrmem->mobileUsers[id_user].pedidosSocial++;
@@ -1051,18 +1084,33 @@ void authorizationEngine(int id) {
                 sprintf(message, "AUTHORIZATION_ENGINE %d: SOCIAL AUTHORIZATION REQUEST (ID = %d) REFUSED", id, aux.id);
                 escreverLog(message);
             }
+             printf("Plafond depois: %d\n", shrmem->mobileUsers[id_user].plafondAtual);
             pthread_mutex_unlock(&shrmem->mutex_mem);
 
             //sprintf(message, "AUTHORIZATION_ENGINE %d: MUSIC AUTHORIZATION REQUEST (ID = %d) PROCESSING COMPLETED", id, aux.id);
             //escreverLog(message);
 
-        } else if (aux.servico == 3){ // stats
-            printf("Pedido de autorização de social\n");
+        } else if (strcmp(aux.servico, "data_stats") == 0){ // stats
+            printf("Pedido de autorização de stats\n");
 
             // TODO: completar
-            
+            pthread_mutex_lock(&shrmem->mutex_mem);
+            msgQueue.type = 2;
+            msgQueue.sucesso = 1;
+            msgQueue.totalAuthReqsMusic = shrmem->stats->totalAuthReqsMusic;
+            msgQueue.totalAuthReqsSocial = shrmem->stats->totalAuthReqsSocial;
+            msgQueue.totalAuthReqsVideo = shrmem->stats->totalAuthReqsVideo;
+            msgQueue.totalDataMusic = shrmem->stats->totalDataMusic;
+            msgQueue.totalDataSocial = shrmem->stats->totalDataSocial;
+            msgQueue.totalDataVideo = shrmem->stats->totalDataVideo;
+            pthread_mutex_unlock(&shrmem->mutex_mem);
+
+
+            printf("VOU MANDAR STATTTTTTTTTTTTTTTT\n");
+            msgsnd(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 0);
+            printf("enivieiiiiii\n");
  
-        } else if (aux.servico == 4) { // video
+        } else if (strcmp(aux.servico, "VIDEO") == 0) { // video
             printf("Pedido de autorização de video\n");
 
             int id_user = -1;
@@ -1074,6 +1122,9 @@ void authorizationEngine(int id) {
                 }
             }
 
+            printf("Plafond antes: %d\n", shrmem->mobileUsers[id_user].plafondAtual);
+
+            sem_post(shrmem->sem_alerts);
             int plafond_disponivel = shrmem->mobileUsers[id_user].plafondAtual;
             shrmem->stats->totalAuthReqsVideo++;
             shrmem->mobileUsers[id_user].pedidosVideo++;
@@ -1090,6 +1141,7 @@ void authorizationEngine(int id) {
                 sprintf(message, "AUTHORIZATION_ENGINE %d: VIDEO AUTHORIZATION REQUEST (ID = %d) REFUSED", id, aux.id);
                 escreverLog(message);
             }
+             printf("Plafond depois: %d\n", shrmem->mobileUsers[id_user].plafondAtual);
             pthread_mutex_unlock(&shrmem->mutex_mem);
 
 
@@ -1160,7 +1212,7 @@ void * gerarEstatisticas(void * arg) {
 
         printf("Vou enviar\n");
         msgsnd(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 0);
-        printf("Enviei e vou esperar 5 segundos\n");
+        printf("Enviei e vou esperar 30 segundos\n");
         sleep(30);
         printf("Ja esperei\n");
     }
@@ -1173,17 +1225,35 @@ void * gerarEstatisticas(void * arg) {
 void * gerarAlertas(void *arg) {
     if((int *)arg) {};
 
-
-    /*
+    
     while (1) {
         //pthread_mutex_lock(&mutex_mem);
-        while (1) {
-            pthread_cond_wait(&cond, &mutex_mem);
+        printf("Esperando\n");
+        sem_wait(shrmem->sem_alerts);
+        printf("OPAAAAA\n");
+
+        pthread_mutex_lock(&shrmem->mutex_mem);
+        for (int i = 0; i < shrmem->n_users; i++) {
+            //printf("%d %d %d\n", shrmem->mobileUsers[i].pedidosAtual, shrmem->mobileUsers[i].plafondInicial, shrmem->mobileUsers[i].pedidosAtual < shrmem->mobileUsers[i].plafondInicial * 0.2);
+            
+            if (shrmem->mobileUsers[i].plafondAtual <= shrmem->mobileUsers[i].plafondInicial * 0) {
+                msgQueue.type = shrmem->mobileUsers[i].id_user;
+                msgQueue.sucesso = 4;
+                msgsnd(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 0);
+            } else if (shrmem->mobileUsers[i].plafondAtual < shrmem->mobileUsers[i].plafondInicial * 0.1) {
+                msgQueue.type = shrmem->mobileUsers[i].id_user;
+                msgQueue.sucesso = 3;
+                msgsnd(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 0);
+            } else if (shrmem->mobileUsers[i].plafondAtual < shrmem->mobileUsers[i].plafondInicial * 0.2) {
+                msgQueue.type = shrmem->mobileUsers[i].id_user;
+                msgQueue.sucesso = 2;
+                msgsnd(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 0);
+            } 
         }
-
-
+        pthread_mutex_unlock(&shrmem->mutex_mem);
     }
-    */
+    
+    
 
 
     pthread_exit(NULL);

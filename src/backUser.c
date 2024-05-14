@@ -188,11 +188,11 @@ void * command(void * arg){
             printf("Vou enviar %s\n", comando);
             write(fd_pipe, comando, strlen(comando));
 
-            msgrcv(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 3, 0);
-            printf("Service\tTotal data\tAuth Reqs\n");
-            printf("VIDEO\t%d\t%d\n", msgQueue.totalDataVideo, msgQueue.totalAuthReqsVideo);
-            printf("MUSIC\t%d\t%d\n", msgQueue.totalDataMusic, msgQueue.totalAuthReqsMusic);
-            printf("SOCIAL\t%d\t%d\n", msgQueue.totalDataSocial, msgQueue.totalAuthReqsSocial);
+            msgrcv(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 2, 0);
+            printf("Service\t%-12s\t%-10s\n", "Total data", "Auth Reqs");
+            printf("%-6s\t%-12d\t%-10d\n", "VIDEO", msgQueue.totalDataVideo, msgQueue.totalAuthReqsVideo);
+            printf("%-6s\t%-12d\t%-10d\n", "MUSIC", msgQueue.totalDataMusic, msgQueue.totalAuthReqsMusic);
+            printf("%-6s\t%-12d\t%-10d\n", "SOCIAL", msgQueue.totalDataSocial, msgQueue.totalAuthReqsSocial);
 
 
 

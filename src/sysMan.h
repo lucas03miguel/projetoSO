@@ -30,6 +30,9 @@ typedef struct {
     int plafondAtual;
     //int pedidosMax;
     int pedidosAtual;
+    int pedidosVideo;
+    int pedidosMusic;
+    int pedidosSocial;
     int id_user;
 } MobileUser;
 
@@ -40,6 +43,7 @@ typedef struct {
     int totalAuthReqsMusic;
     int totalDataSocial;
     int totalAuthReqsSocial;
+    int totalAuthReqs;
 } Stats;
 
 typedef struct {
@@ -60,7 +64,7 @@ typedef struct {
 } MemStruct;
 
 typedef struct {
-    long type; // 1 - estatistica; 2 - alerta; pid - user
+    long type; // 3 - estatistica; 2 - alerta; pid - user
     int sucesso; // 0 - falha; 1 - sucesso
     int totalDataVideo;
     int totalAuthReqsVideo;
@@ -68,12 +72,14 @@ typedef struct {
     int totalAuthReqsMusic;
     int totalDataSocial;
     int totalAuthReqsSocial;
+    int totalAuthReqs;
+    
 } glMessageQueue;
 
 typedef struct {
-    //int servico; // 0 - registo; 1 - video; 2 - music; 3 - social; -1 - null
-    int dados_reservar;
     int id;
+    char servico[BUFLEN]; // video 
+    int dados_reservar;
     time_t enqueued_time; // tempo em que foi inserido na fila
 } Video_Streaming_Queue;
 
@@ -83,9 +89,9 @@ typedef struct node_video{
 } Node_video;
 
 typedef struct {
-    int servico; // 0 - registo; 1 - music; 2 - social; -1 - null
-    int dados_reservar;
     int id;
+    char servico[BUFLEN]; // register; music; social; stats; null
+    int dados_reservar;
     time_t enqueued_time; // tempo em que foi inserido na fila
 } Other_Services_Queue;
 
@@ -95,9 +101,9 @@ typedef struct node_other{
 } Node_other;
 
 struct enviar_pipe {
-    int servico; // 0 - registo; 1 - music; 2 - social; 3 - video; -1 - null
-    int dados_reservar;
     int id;
+    char servico[BUFLEN]; // register; music; social; data_stats; video; null
+    int dados_reservar;
 };
 
 

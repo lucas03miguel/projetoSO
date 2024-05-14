@@ -9,6 +9,8 @@
 
 
 int main(int argc, char *argv[]){
+    signal(SIGINT, sigint);
+
     detecaoErros(argc, argv);
 
 
@@ -53,6 +55,11 @@ int main(int argc, char *argv[]){
     return 0;
 }
 
+void sigint(int signum) {
+    if (signum){};
+    
+    pthread_mutex_destroy(&mutex);
+}
 
 void detecaoErros(int n, char *args[]) {
     if (n != 7) {
@@ -153,8 +160,6 @@ void mobile() {
     pthread_join(video_t, NULL);
     pthread_join(music_t, NULL);
     pthread_join(social_t, NULL);
-    
-
     /*
     while (1) {
         printf("PLAFOND: %d\nN_PEDIDOS: %d\nINTERVALO_VIDEO: %d\nINTERVALO_MUSIC: %d\nINTERVALO_SOCIAL: %d\nDADOS_RESERVAR: %d\n\n", PLAFOND, N_PEDIDOS, INTERVALO_VIDEO, INTERVALO_MUSIC, INTERVALO_SOCIAL, DADOS_RESERVAR);
@@ -169,6 +174,18 @@ void * video(void *args) {
     if ((int *)args){};
 
     printf("%d\n", getppid());
+    int id = getppid();
+    while (1) {
+        printf("VIDEO\n");
+
+        pthread_mutex_lock(&mutex);
+        sprintf(message, "%d#VIDEO#%d", id, DADOS_RESERVAR);
+        write(fd_pipe, &message, sizeof(message));
+        pthread_mutex_unlock(&mutex);
+
+
+        sleep(INTERVALO_VIDEO);
+    }
 
 
 
@@ -181,6 +198,15 @@ void * music(void *args) {
     if ((int *)args){};
 
     printf("%d\n", getppid());
+    int id = getppid();
+    while (1) {
+        pthread_mutex_lock(&mutex);
+        sprintf(message, "%d#MUSIC#%d", id, DADOS_RESERVAR);
+        write(fd_pipe, &message, sizeof(message));
+        pthread_mutex_unlock(&mutex);
+
+        sleep(INTERVALO_MUSIC);
+    }
 
 
 
@@ -193,6 +219,16 @@ void * social(void *args) {
     if ((int *)args){};
     
     printf("%d\n", getppid());
+    int id = getppid();
+    while (1) {
+        printf("SOCIAL\n");
+        pthread_mutex_lock(&mutex);
+        sprintf(message, "%d#SOCIAL#%d", id, DADOS_RESERVAR);
+        write(fd_pipe, &message, sizeof(message));
+        pthread_mutex_unlock(&mutex);
+
+        sleep(INTERVALO_SOCIAL);
+    }   
 
 
     pthread_exit(NULL);

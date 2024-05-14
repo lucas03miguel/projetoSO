@@ -42,14 +42,19 @@ void sigint(int signum){
 void limpeza(){
     printf("\nA realizar limpeza\n");
 
-    close(fd_pipe);
-    //msgctl(glMsqId, IPC_RMID, NULL);
     
+    //
+    //msgctl(glMsqId, IPC_RMID, NULL);
     //unlink(PIPE);
     //shmdt(shrmem);
     //shmctl(shmid, IPC_RMID, NULL);
     //fclose(logFile);
     //fclose(f);
+
+    close(fd_pipe);
+    sem_unlink(SEM_NAME);
+    sem_close(sem);
+
 
     printf("Limpeza realizada. Saindo...\n");
 }
@@ -64,6 +69,12 @@ void arranque() {
     }
     */
 
+    sem = sem_open(SEM_NAME, O_CREAT | O_EXCL, 0777, 1);
+    if (sem == SEM_FAILED) {
+        printf("Só pode ter um backoffice a correr de cada vez\n");
+        exit(-1);
+    }
+
     glMsqId = msgget(123, 0777);
     if (glMsqId == -1) {
         perror("Erro ao acessar a Message Queue");
@@ -74,10 +85,20 @@ void arranque() {
 
 void printMenu(){
 	printf("---------MENU---------\n");
-	printf("ID#data_stats - Apresentar estatísticas\n");
-	printf("ID#reset - Limpar todas as estatísticas\n");
+	printf("1#data_stats - Apresentar estatísticas\n");
+	printf("1#reset - Limpar todas as estatísticas\n");
     printf("----------------------\n");
     //logFile = fopen("../files/log.txt", "a");
+}
+
+int countChar(const char *str, char ch) {
+    int count = 0;
+    while (*str) {
+        if (*str == ch)
+            count++;
+        str++;
+    }
+    return count;
 }
 
 void gerarComandos(char *comando, char *token) {
@@ -85,6 +106,10 @@ void gerarComandos(char *comando, char *token) {
     fgets(comando, BUFLEN, stdin);
     comando[strlen(comando) - 1] = '\0';
 
+    if (countChar(comando, '#') != 1) {
+        strcpy(comando, "erro");
+        return;
+    }
     strtok(comando, "#");
     strcpy(token, comando);
     strcpy(comando, strtok(NULL, "#"));
@@ -128,7 +153,7 @@ void * stats(void * arg){
     if ((int *)arg){};
 
     while (1) {
-        printf("\nRecebi stats\n");
+        printf("\nVou receber stats\n");
         if (msgrcv(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 1, 0) < 0) {
             perror("Erro ao receber mensagem");
             limpeza();
@@ -136,6 +161,7 @@ void * stats(void * arg){
         }
         //msgrcv(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 1, 0);
         //printf("oi\n");
+        printf("\nTotal de pedidos de autenticação: %d\n", msgQueue.totalAuthReqs);
         printf("Total de pedidos de autenticação de música: %d\n", msgQueue.totalAuthReqsMusic);
         printf("Total de pedidos de autenticação de social: %d\n", msgQueue.totalAuthReqsSocial);
         printf("Total de pedidos de autenticação de video: %d\n", msgQueue.totalAuthReqsVideo);
@@ -145,7 +171,6 @@ void * stats(void * arg){
 
     }
     
-
     pthread_exit(NULL);
     return NULL;
 }
@@ -159,6 +184,17 @@ void * command(void * arg){
 
         if (strcmp(comando, "data_stats") == 0) {
             printf("Comando certo\n");
+
+            printf("Vou enviar %s\n", comando);
+            write(fd_pipe, comando, strlen(comando));
+
+            msgrcv(glMsqId, &msgQueue, sizeof(glMessageQueue) - sizeof(long), 3, 0);
+            printf("Service\tTotal data\tAuth Reqs\n");
+            printf("VIDEO\t%d\t%d\n", msgQueue.totalDataVideo, msgQueue.totalAuthReqsVideo);
+            printf("MUSIC\t%d\t%d\n", msgQueue.totalDataMusic, msgQueue.totalAuthReqsMusic);
+            printf("SOCIAL\t%d\t%d\n", msgQueue.totalDataSocial, msgQueue.totalAuthReqsSocial);
+
+
 
         } else if (strcmp(comando, "reset") == 0) {
             printf("Comando certo\n");

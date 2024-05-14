@@ -22,21 +22,27 @@
 
 #define BUFLEN 1024
 #define PIPE "/tmp/BACK_PIPE"
+#define SEM_NAME "/sem_bloqueante"
 
 typedef struct {
-    long type;
+    long type; // 1 - estatistica; 2 - alerta; pid - user
+    int sucesso; // 0 - falha; 1 - sucesso
     int totalDataVideo;
     int totalAuthReqsVideo;
     int totalDataMusic;
     int totalAuthReqsMusic;
     int totalDataSocial;
     int totalAuthReqsSocial;
+    int totalAuthReqs;
+    
 } glMessageQueue;
 
 int glMsqId;
 pthread_t stats_t, command_t;
+sem_t *sem;
 glMessageQueue msgQueue;
 int fd_pipe;
+char message[BUFLEN];
 
 //void escreverLog(char *message);
 void arranque();
